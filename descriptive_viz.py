@@ -108,11 +108,15 @@ obs = df_na.count()
 
 # Dataframe of characteristics by WAP
 df_wap = pd.DataFrame(dict(avg = avg, obs = obs))
+df_wap['hover'] =  df_wap.index.map(str) + ', ' + df_wap.obs.map(str) + ' observations'
+
+# WAP123
+# 43 observations
 
 trace = go.Scatter(
         x = df_wap.index,
         y = df_wap.avg, 
-        text = df_wap.obs,
+        text = df_wap.hover,
         hoverinfo = 'text',
         mode = 'markers',
         marker = dict(
@@ -122,7 +126,15 @@ trace = go.Scatter(
         )
 )
 
+layout = go.Layout(
+        title='Characteristics of WAPs',
+        yaxis=dict(
+                title = 'Average signal strength'
+        )
+)
+
 data = [trace]
-plot(data)
+fig = go.Figure(data=data, layout=layout)
+plot(fig, filename='plots/characteristics_of_WAPs.html')
 
 
