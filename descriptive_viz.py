@@ -15,7 +15,7 @@ Created on Thu Feb  7 10:58:43 2019
 
 
 
-# %% Startup
+# %% Setup
 
 # Change working directory to the folder where script is stored.
 from os import chdir, getcwd
@@ -25,16 +25,41 @@ chdir(wd)
 import pandas as pd
 # import plotly.plotly as py
 import plotly.graph_objs as go
-from plotly.offline import  plot, iplot #, download_plotlyjs, init_notebook_mode
+from plotly.offline import  plot #iplot, download_plotlyjs, init_notebook_mode
 import numpy as np
 
 # %% Read and format data
 
 df = pd.read_csv('data/trainingData.csv')
+df_test = pd.read_csv('data/validationData.csv')
+
+# %% Which WAPs are different between the two data sets?
 
 # Keep columns that correspond to WAPs.
 wap_names = [col for col in df if col.startswith('WAP')]
 df = df[wap_names]
+df_test = df_test[wap_names]
+
+# Set all 100 values to NaN
+df_na = df.replace(100, np.NaN)
+df_test_na = df_test.replace(100, np.NaN)
+
+na_col_train = df_na.isna().sum()
+na_col_test = df_test_na.isna().sum()
+
+# List of WAPs will all null values in train set
+null_train = na_col_train[na_col_train == len(df_na)].index.tolist()
+null_test = na_col_test[na_col_test == len(df_test_na)].index.tolist()
+
+null_both = list(set(null_train).intersection(null_test))
+
+print('There are', len(null_train), 'WAPs missing from the train set.')
+print('There are', len(null_test), 'WAPs missing from the test set.')
+print('There are', len(null_both), 'WAPs missing from both sets.')
+
+# %% Density plots and basic visualizations
+
+
 # Put all signals in the same column
 df_m = pd.melt(df, value_vars = wap_names)
 
@@ -62,11 +87,7 @@ plot(fig)
 
 # %% Average value by WAP
 
-# Histogram of average signal from each WAP
-# Set all 100 values to NaN
-df_na = df.replace(100, np.NaN)
-
-# Plot average signal strength/WAP histogram
+# Average signal strength/WAP histogram
 avg = df_na.mean(axis = 0, skipna = True).sort_values(ascending = False)
 data = [go.Histogram(x=avg)]
 plot(data, filename = 'plots/avg_sig_histogram.html')
