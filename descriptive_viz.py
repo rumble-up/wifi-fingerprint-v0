@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+IN PROGRESS
 Purpose: Descriptiive visualization of UJIIndoorLoc dataset
+
+
+Next step: Take out WAPs not in validation set, and those
+with no observations
+
 
 Created on Thu Feb  7 10:58:43 2019
 @author: Laura Stupin
 """
+
+
 
 # %% Startup
 
@@ -37,9 +45,17 @@ df_m = df_m[df_m.value != 100]
 print(min(df_m.value))
 print(max(df_m.value))
 
-# Plot total histogram
+# Plot total histogram with log y axis
 data = [go.Histogram(x=df_m['value'])]
-plot(data)
+
+layout = go.Layout(
+        yaxis = dict(
+                type='log',
+                autorange = True
+        )
+)
+fig = go.Figure(data=data, layout=layout)
+plot(fig)
 
 
  
@@ -81,7 +97,7 @@ trace = go.Scatter(
         marker = dict(
                 color = np.log(df_wap.obs),
                 colorscale = 'Viridis',
-                showscale = True
+                showscale = False
         )
 )
 
