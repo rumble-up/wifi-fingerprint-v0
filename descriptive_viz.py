@@ -27,13 +27,15 @@ import pandas as pd
 import plotly.graph_objs as go
 from plotly.offline import  plot #iplot, download_plotlyjs, init_notebook_mode
 import numpy as np
+import pickle
 
-# %% Read and format data
+
+# %% Read and format data -----------------------------------------------------
 
 df = pd.read_csv('data/trainingData.csv')
 df_test = pd.read_csv('data/validationData.csv')
 
-# %% Which WAPs are different between the two data sets?
+# %% Which WAPs are different between the two data sets? ----------------------
 
 # Keep columns that correspond to WAPs.
 wap_names = [col for col in df if col.startswith('WAP')]
@@ -50,6 +52,7 @@ na_col_test = df_test_na.isna().sum()
 # List of WAPs will all null values in train set
 null_train = na_col_train[na_col_train == len(df_na)].index.tolist()
 null_test = na_col_test[na_col_test == len(df_test_na)].index.tolist()
+
 
 null_both = list(set(null_train).intersection(null_test))
 
@@ -137,4 +140,14 @@ data = [trace]
 fig = go.Figure(data=data, layout=layout)
 plot(fig, filename='plots/characteristics_of_WAPs.html')
 
+# %% Pickling staging area
+# Save an object in the environment
+with open('data/null_WAPs_train.pkl', 'wb') as f:
+    pickle.dump(null_train, f)
+
+# Load an object in     
+with open('data/null_WAPs_train.pkl', 'rb') as f:
+    this_list = pickle.load(f)
+    
+    
 
