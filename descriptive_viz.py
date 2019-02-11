@@ -60,21 +60,37 @@ print('There are', len(null_train), 'WAPs missing from the train set.')
 print('There are', len(null_test), 'WAPs missing from the test set.')
 print('There are', len(null_both), 'WAPs missing from both sets.')
 
-# %% Density plots and basic visualizations
+# %% Density plots and basic visualizations for test and train sets
 
 
 # Put all signals in the same column
 df_m = pd.melt(df, value_vars = wap_names)
+df_m['dataset'] = 'train'
+df_test_m = pd.melt(df_test, value_vars = wap_names)
+df_test_m['dataset'] = 'test'
 
+# Append both dataframes
+df_m = df_m.append(df_test_m)
 
 # Remove all 100 values
-df_m = df_m[df_m.value != 100]
+df_m = df_m[df_m['value'] != 100]
+#df_test_m = df_test_m[df_test_m['value'] != 100]
+
+# Add columns with mW value
+df_m['mW'] = pow(10, df_m.value/10)
+df_test_m
 
 print(min(df_m.value))
 print(max(df_m.value))
 
+df_m['dataset'] == 'train'
+
+
+
 # Plot total histogram with log y axis
-data = [go.Histogram(x=df_m['value'])]
+trace1 = go.Histogram(x=df_m['value'][df_m['dataset'] == 'train'])
+trace2 = go.Histogram(x=df_m['value'][df_m['dataset'] == 'test'])
+data = [trace1, trace2]
 
 layout = go.Layout(
         yaxis = dict(
@@ -84,6 +100,21 @@ layout = go.Layout(
 )
 fig = go.Figure(data=data, layout=layout)
 plot(fig)
+
+# Plot mW on x-axis histogram 
+# This plot does not seem useful
+#trace1 = go.Histogram(x=df_m['mW'][df_m['dataset'] == 'train'])
+#trace2 = go.Histogram(x=df_m['mW'][df_m['dataset'] == 'test'])
+#data = [trace1] #, trace2]
+#
+#layout = go.Layout(
+#        xaxis = dict(
+#                type='log',
+#                autorange = True
+#        )
+#)
+#fig = go.Figure(data=data, layout=layout)
+#plot(fig)        
 
 
  
@@ -142,8 +173,8 @@ plot(fig, filename='plots/characteristics_of_WAPs.html')
 
 # %% Pickling staging area
 # Save an object in the environment
-with open('data/null_WAPs_train.pkl', 'wb') as f:
-    pickle.dump(null_train, f)
+with open('data/null_WAPs_test.pkl', 'wb') as f:
+    pickle.dump(null_test, f)
 
 # Load an object in     
 with open('data/null_WAPs_train.pkl', 'rb') as f:
