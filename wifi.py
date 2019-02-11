@@ -17,18 +17,22 @@ from mpl_toolkits.mplot3d import Axes3D
 import seaborn  # for ggplot
 import plotly.plotly as py
 import plotly.graph_objs as go
-import os, sys
+
+from os import chdir, getcwd
+wd=getcwd()
+chdir(wd)
+
 import csv
 from datetime import datetime
 
 #%%
 ## Get and change working directory
 os.getcwd()
-os.chdir('/Users/denizminican/Dropbox/03-Data_and_Coding/Ubiqum/Wifi')
+os.chdir('/Users/denizminican/Dropbox/03-Data_and_Coding/Ubiqum/Repositories/wifi-fingerprint')
 
 #%%
 ## Create the df
-train = pd.read_csv('trainingData.csv')
+train = pd.read_csv('data/trainingData.csv')
 
 ## Change Time to DateTime
 # =============================================================================
