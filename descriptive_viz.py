@@ -87,7 +87,7 @@ df_m['dataset'] == 'train'
 
 
 
-# Plot total histogram with log y axis
+# Plot dBm total histogram with log y axis
 trace1 = go.Histogram(x=df_m['value'][df_m['dataset'] == 'train'])
 trace2 = go.Histogram(x=df_m['value'][df_m['dataset'] == 'test'])
 data = [trace1, trace2]
@@ -117,7 +117,32 @@ plot(fig)
 #plot(fig)        
 
 
- 
+# %% Investigate signals above -30 dBm
+df_m_outliers = df_m[df_m['value'] > -30]
+df_m_outliers['variable'].unique()
+
+outliers = pd.pivot_table(df_m_outliers, 
+                          values = 'value', 
+                          index = ['variable'],
+                          aggfunc = 'count')
+
+trace = go.Scatter(
+        x = outliers.index,
+        y = outliers.value, 
+        mode = 'markers'
+)
+
+layout = go.Layout(
+        title='Characteristics of WAPs',
+        yaxis=dict(
+                title = 'Average signal strength'
+        )
+)
+
+data = [trace]
+plot(data)
+fig = go.Figure(data=data, layout=layout)
+plot(fig, filename='plots/char
 
 # %% Average value by WAP
 
