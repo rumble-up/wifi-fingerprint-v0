@@ -1,18 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Status: IN PROGRESS
+Status: Plot sketches, but not finalized clean code
 Purpose: Descriptiive visualization of UJIIndoorLoc dataset
 
 Created on Thu Feb  7 10:58:43 2019
 @author: Laura Stupin
-
-Data issues:
-    * 97.5% of data is 100s - 
-    * 3 & 4 floor with user 6, phone 19
-      - Quick fix: drop values above -30 dBm
-    * Do we mix training & validation?
-
 
 """
 
@@ -55,7 +48,6 @@ df_out['PHONEID'].value_counts()
 # %% Which WAPs are different between the two data sets? ----------------------
 
 # Keep columns that correspond to WAPs.
-
 df = df[wap_names]
 df_val = df_val[wap_names]
 
@@ -81,7 +73,7 @@ print('There are', len(null_both), 'WAPs missing from both sets.')
 wap_groups = dict(null_train = null_train,
                   null_test = null_test)
 
-# %% Density plots and basic visualizations for test and train sets
+# %% Density plots and basic visualizations for test and train sets -----------
 
 
 # Put all signals in the same column
@@ -118,7 +110,7 @@ plot(fig)
 
 
 
-# %% Average value by WAP
+# %% Average value by WAP -----------------------------------------------------
 
 # Average signal strength/WAP histogram
 avg = df_na.mean(axis = 0, skipna = True).sort_values(ascending = False)
@@ -142,7 +134,7 @@ obs = df_na.count()
 # Dataframe of characteristics by WAP
 df_wap = pd.DataFrame(dict(avg = avg, obs = obs))
 
-# %% Investigate signals above -30 dBm training alone
+# %% Investigate signals above -30 dBm ----------------------------------------
 # THERE ARE NO OUTLIERS IN TEST SET
 df_both_outliers = df_both[df_both['value'] > -30]
 
@@ -161,7 +153,7 @@ df_wap['above30_%'] = df_wap.above30dBm/df_wap.obs
                           
 df_wap['hover'] =  df_wap.index.map(str) + ', ' + df_wap.obs.map(str) + ' observations'
 
-#%% WAP percentage outlier scatter chart
+#%% WAP percentage outlier scatter chart --------------------------------------
 
 out = df_wap[df_wap['above30_%'] > 0]
 
@@ -173,7 +165,7 @@ trace = go.Scatter(
 data = [trace]
 plot(data)
 
-#%% Master WAP graph
+#%% Master WAP graph ----------------------------------------------------------
 
 trace = go.Scatter(
         x = df_wap.index,
@@ -199,8 +191,9 @@ data = [trace]
 fig = go.Figure(data=data, layout=layout)
 plot(fig, filename='plots/characteristics_of_WAPs.html')
 
-# %% Pickling staging area
-# Load an object in     
+# %% Pickling staging area ----------------------------------------------------
+
+# Load Deniz's .pkl     
 #with open('data/wap_buildings.pkl', 'rb') as f:
 #    d = pickle.load(f)
 #    
@@ -219,7 +212,7 @@ with open('data/wap_groups.pkl', 'wb') as f:
 with open('data/wap_groups.pkl', 'rb') as f:
     test = pickle.load(f)
 
-#%% Sandbox and archive
+#%% Sandbox/Archive -----------------------------------------------------------
 
 
 # Plot mW on x-axis histogram 
