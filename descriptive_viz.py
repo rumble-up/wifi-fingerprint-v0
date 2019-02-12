@@ -4,14 +4,21 @@
 Status: IN PROGRESS
 Purpose: Descriptiive visualization of UJIIndoorLoc dataset
 
-
 Created on Thu Feb  7 10:58:43 2019
 @author: Laura Stupin
+
+Data issues:
+    * 97.5% of data is 100s - 
+    * 3 & 4 floor with user 6, phone 19
+      - Quick fix: drop values above -30 dBm
+    * Do we mix training & validation?
+
+
 """
 
 
 
-# %% Setup
+# %% Setup --------------------------------------------------------------------
 
 # Change working directory to the folder where script is stored.
 from os import chdir, getcwd
@@ -30,11 +37,25 @@ import pickle
 
 df = pd.read_csv('data/trainingData.csv')
 df_val = pd.read_csv('data/validationData.csv')
+wap_names = [col for col in df if col.startswith('WAP')]
+
+# %% Which User IDs have signals above -30 dBm? -------------------------------
+df110 = df.replace(100, -110)
+
+# Filter to rows where any column is greater than 489
+df_out = df110[(df110[wap_names] > -29).any(1)]
+df_out['USERID'].unique()
+df_out['PHONEID'].unique()
+len(df_out)
+
+# 88% of outliers come from PHONEID 19
+df_out['PHONEID'].value_counts()
+
 
 # %% Which WAPs are different between the two data sets? ----------------------
 
 # Keep columns that correspond to WAPs.
-wap_names = [col for col in df if col.startswith('WAP')]
+
 df = df[wap_names]
 df_val = df_val[wap_names]
 
