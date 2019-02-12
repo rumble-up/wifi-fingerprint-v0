@@ -27,13 +27,15 @@ import pandas as pd
 import plotly.graph_objs as go
 from plotly.offline import  plot #iplot, download_plotlyjs, init_notebook_mode
 import numpy as np
+import pickle
 
-# %% Read and format data
+
+# %% Read and format data -----------------------------------------------------
 
 df = pd.read_csv('data/trainingData.csv')
 df_test = pd.read_csv('data/validationData.csv')
 
-# %% Which WAPs are different between the two data sets?
+# %% Which WAPs are different between the two data sets? ----------------------
 
 # Keep columns that correspond to WAPs.
 wap_names = [col for col in df if col.startswith('WAP')]
@@ -51,27 +53,44 @@ na_col_test = df_test_na.isna().sum()
 null_train = na_col_train[na_col_train == len(df_na)].index.tolist()
 null_test = na_col_test[na_col_test == len(df_test_na)].index.tolist()
 
+
 null_both = list(set(null_train).intersection(null_test))
 
 print('There are', len(null_train), 'WAPs missing from the train set.')
 print('There are', len(null_test), 'WAPs missing from the test set.')
 print('There are', len(null_both), 'WAPs missing from both sets.')
 
-# %% Density plots and basic visualizations
+# %% Density plots and basic visualizations for test and train sets
 
 
 # Put all signals in the same column
 df_m = pd.melt(df, value_vars = wap_names)
+df_m['dataset'] = 'train'
+df_test_m = pd.melt(df_test, value_vars = wap_names)
+df_test_m['dataset'] = 'test'
 
+# Append both dataframes
+df_m = df_m.append(df_test_m)
 
 # Remove all 100 values
-df_m = df_m[df_m.value != 100]
+df_m = df_m[df_m['value'] != 100]
+#df_test_m = df_test_m[df_test_m['value'] != 100]
+
+# Add columns with mW value
+df_m['mW'] = pow(10, df_m.value/10)
+df_test_m
 
 print(min(df_m.value))
 print(max(df_m.value))
 
-# Plot total histogram with log y axis
-data = [go.Histogram(x=df_m['value'])]
+df_m['dataset'] == 'train'
+
+
+
+# Plot dBm total histogram with log y axis
+trace1 = go.Histogram(x=df_m['value'][df_m['dataset'] == 'train'])
+trace2 = go.Histogram(x=df_m['value'][df_m['dataset'] == 'test'])
+data = [trace1, trace2]
 
 layout = go.Layout(
         yaxis = dict(
@@ -82,8 +101,48 @@ layout = go.Layout(
 fig = go.Figure(data=data, layout=layout)
 plot(fig)
 
+# Plot mW on x-axis histogram 
+# This plot does not seem useful
+#trace1 = go.Histogram(x=df_m['mW'][df_m['dataset'] == 'train'])
+#trace2 = go.Histogram(x=df_m['mW'][df_m['dataset'] == 'test'])
+#data = [trace1] #, trace2]
+#
+#layout = go.Layout(
+#        xaxis = dict(
+#                type='log',
+#                autorange = True
+#        )
+#)
+#fig = go.Figure(data=data, layout=layout)
+#plot(fig)        
 
- 
+
+# %% Investigate signals above -30 dBm
+df_m_outliers = df_m[df_m['value'] > -30]
+df_m_outliers['variable'].unique()
+
+outliers = pd.pivot_table(df_m_outliers, 
+                          values = 'value', 
+                          index = ['variable'],
+                          aggfunc = 'count')
+
+trace = go.Scatter(
+        x = outliers.index,
+        y = outliers.value, 
+        mode = 'markers'
+)
+
+layout = go.Layout(
+        title='Characteristics of WAPs',
+        yaxis=dict(
+                title = 'Average signal strength'
+        )
+)
+
+data = [trace]
+plot(data)
+fig = go.Figure(data=data, layout=layout)
+plot(fig, filename='plots/char
 
 # %% Average value by WAP
 
@@ -137,4 +196,14 @@ data = [trace]
 fig = go.Figure(data=data, layout=layout)
 plot(fig, filename='plots/characteristics_of_WAPs.html')
 
+# %% Pickling staging area
+# Save an object in the environment
+with open('data/null_WAPs_test.pkl', 'wb') as f:
+    pickle.dump(null_test, f)
+
+# Load an object in     
+with open('data/null_WAPs_train.pkl', 'rb') as f:
+    this_list = pickle.load(f)
+    
+    
 
