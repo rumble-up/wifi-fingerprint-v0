@@ -93,46 +93,9 @@ layout = go.Layout(
 )
 fig = go.Figure(data=data, layout=layout)
 plot(fig)
-
-# Plot mW on x-axis histogram 
-# This plot does not seem useful
-#trace1 = go.Histogram(x=df_m['mW'][df_m['dataset'] == 'train'])
-#trace2 = go.Histogram(x=df_m['mW'][df_m['dataset'] == 'test'])
-#data = [trace1] #, trace2]
-#
-#layout = go.Layout(
-#        xaxis = dict(
-#                type='log',
-#                autorange = True
-#        )
-#)
-#fig = go.Figure(data=data, layout=layout)
-#plot(fig)        
+   
 
 
-# %% Investigate signals above -30 dBm training alone
-# THERE ARE NO OUTLIERS IN TEST SET
-df_both_outliers = df_both[df_both['value'] > -30]
-
-# Store in WAP dictionary
-wap_groups['above30dbm'] = df_both_outliers['variable'].unique().tolist()
-
-
-outliers = pd.pivot_table(df_both_outliers, 
-                          values = 'value', 
-                          index = ['variable'],
-                          aggfunc = 'count')
-
-trace = go.Scatter(
-        x = outliers.index,
-        y = outliers.value, 
-        mode = 'markers'
-)
-
-data = [trace]
-plot(data)
-fig = go.Figure(data=data, layout=layout)
-plot(fig, filename='plots/char
 
 # %% Average value by WAP
 
@@ -157,10 +120,39 @@ obs = df_na.count()
 
 # Dataframe of characteristics by WAP
 df_wap = pd.DataFrame(dict(avg = avg, obs = obs))
+
+# %% Investigate signals above -30 dBm training alone
+# THERE ARE NO OUTLIERS IN TEST SET
+df_both_outliers = df_both[df_both['value'] > -30]
+
+# Store in WAP dictionary
+wap_groups['above30dbm'] = df_both_outliers['variable'].unique().tolist()
+outliers = pd.pivot_table(df_both_outliers, 
+                          values = 'value', 
+                          index = ['variable'],
+                          aggfunc = 'count')
+
+
+# Add information about outliers
+outliers.columns = ['above30dBm']
+df_wap = df_wap.join(outliers, how='outer') 
+df_wap['above30_%'] = df_wap.above30dBm/df_wap.obs                          
+                          
 df_wap['hover'] =  df_wap.index.map(str) + ', ' + df_wap.obs.map(str) + ' observations'
 
-# WAP123
-# 43 observations
+#%% WAP percentage outlier scatter chart
+
+out = df_wap[df_wap['above30_%'] > 0]
+
+trace = go.Scatter(
+        x=out.index,
+        y=out['above30_%'],
+        mode = 'markers'
+)
+data = [trace]
+plot(data)
+
+#%% Master WAP graph
 
 trace = go.Scatter(
         x = df_wap.index,
@@ -188,15 +180,15 @@ plot(fig, filename='plots/characteristics_of_WAPs.html')
 
 # %% Pickling staging area
 # Load an object in     
-with open('data/wap_buildings.pkl', 'rb') as f:
-    d = pickle.load(f)
-    
-wap_groups['b0'] = d['wap0']
-wap_groups['b01'] = d['wap01']
-wap_groups['b02'] = d['wap02']
-wap_groups['b1'] = d['wap1']
-wap_groups['b12'] = d['wap12']
-wap_groups['b2'] = d['wap2']
+#with open('data/wap_buildings.pkl', 'rb') as f:
+#    d = pickle.load(f)
+#    
+#wap_groups['b0'] = d['wap0']
+#wap_groups['b01'] = d['wap01']
+#wap_groups['b02'] = d['wap02']
+#wap_groups['b1'] = d['wap1']
+#wap_groups['b12'] = d['wap12']
+#wap_groups['b2'] = d['wap2']
 
 # Save an object in the environment
 with open('data/wap_groups.pkl', 'wb') as f:
@@ -205,6 +197,23 @@ with open('data/wap_groups.pkl', 'wb') as f:
 # Load an object in     
 with open('data/wap_groups.pkl', 'rb') as f:
     test = pickle.load(f)
-    
+
+#%% Sandbox and archive
+
+
+# Plot mW on x-axis histogram 
+# This plot does not seem useful
+#trace1 = go.Histogram(x=df_m['mW'][df_m['dataset'] == 'train'])
+#trace2 = go.Histogram(x=df_m['mW'][df_m['dataset'] == 'test'])
+#data = [trace1] #, trace2]
+#
+#layout = go.Layout(
+#        xaxis = dict(
+#                type='log',
+#                autorange = True
+#        )
+#)
+#fig = go.Figure(data=data, layout=layout)
+#plot(fig)     
     
 
