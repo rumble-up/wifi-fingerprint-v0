@@ -74,7 +74,8 @@ if x100_to_na: df = df.replace(100, np.nan)
 
 # Count observations per row
 df['sig_count'] = 520 - df[wap_names].isnull().sum(axis=1)
-
+trace = go.Histogram(x=df['sig_count'])
+plot([trace])
 
 # Implement assumptions
 if drop_na_rows: df = df[df['sig_count'] != 0]
@@ -110,24 +111,21 @@ low_rank = pd.melt(low_rank.reset_index(), id_vars='index').dropna()
 low_rank = low_rank.pivot(index = 'index', columns = 'value', values = 'variable')
 
 
-
 # %% Build dataframe with selected attributes ---------------------------------
 
 # Change column names to be unique, remove last two characters
 hi_rank.columns = [('hi' + str(name))[:-2] for name in hi_rank.columns]
 low_rank.columns = [('lo' + str(name))[:-2] for name in low_rank.columns]
 
-# Original location columns
-df_rank = df[keep]
-# Add hi/lo rank columns
-df_rank = df_rank.join(hi_rank.ix[:, 0:top_num]).join(low_rank.ix[:, 0:bot_num])
+# Select only the top __ and the bottom ___
+ranks = hi_rank.ix[:, 0:top_num].join(low_rank.ix[:, 0:bot_num])
+# Change to categorical variables
+ranks = ranks.apply(lambda x: x.astype('category'))
 
+# Compile full data frame
+df_rank = df[keep].join(ranks)
 df_rank.dtypes
 
-
-
-trace = go.Histogram(x=df['sig_count'])
-plot([trace])
 
 #%% Sandbox/Archive
 
