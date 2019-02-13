@@ -174,9 +174,13 @@ y2 = train.pop('FLOOR').values
 y3 = train.pop('LATITUDE').values
 y4 = train.pop('LONGITUDE').values
 
-# Changing type to to ndarray
+# Convert building and floor to categoric ()
+data['x'] = data['x'].astype('category')
 
 # Cross validation
+
+# Confusion matrix
+
 
 # Features and targets normalization
 scalarX, scalary = MinMaxScaler(), MinMaxScaler()
@@ -192,7 +196,7 @@ print (train.iloc[:, :520].shape)
 print (y1.shape)
 print (val.iloc[:, :520].shape)
 print (val.iloc[:, 523].shape)
-pred1 = svc_model.fit(train.iloc[:, :520], y1).predict(val.iloc[:, :520])
+pred1 = svc_model.fit(train.iloc[:, 0:520], y1).predict(val.iloc[:, :520])
 
 #print the accuracy score of the model
 print ("LinearSVC accuracy : ", accuracy_score(val.iloc[:, 523], pred1, normalize = True))
