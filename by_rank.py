@@ -12,7 +12,7 @@ Known issues:
 
 """
 # %% Assumptions in these calculations --------------------------------------------------------------
-unknown_na = True # All 100 values assigned to nans
+unknown_na = True # All 100 values are replaced by NaNs
 
 # %% Setup --------------------------------------------------------------------
 
@@ -33,23 +33,30 @@ df_raw = pd.read_csv('data/trainingData.csv')
 wap_names = [col for col in df_raw if col.startswith('WAP')]
 
 # Temporary - choose if working with full dataframe or subset
-df = df_raw.head(10)
+df = df_raw
 
 if unknown_na: df = df.replace(100, np.nan)
 
 # Count observations per row
 df['sig_count'] = 520 - df[wap_names].isnull().sum(axis=1)
 
-# Rank the signal strength along each row
-rank = df[wap_names].rank(axis=1)
+# %% Rank signals with random tie-breaking ------------------------------------
 
-# Melt into long form, sort by original row number and rank
+# Set seed
+np.random.seed(42)
+
+# Create small random noise 
+noise = np.random.rand(*df[wap_names].shape) / 10000.0 
+
+# Add noise to each signal so that ties are broken randomly
+# Rank along each row
+rank = (df[wap_names] + noise).rank(axis=1)
+
+# Melt into long form, order by row number and rank
 rank = pd.melt(rank.reset_index(), id_vars='index').sort_values(by=['index', 'value'])
 
 # Drop na values
 rank = rank[rank['value'].notna()]
-
-# NEED TO SOLVE TIES - in melted format, randomly choose one above and one below
 
 # Pivot back to have the columns be first rank, second rank, etc
 rank = rank.pivot(index = 'index', columns = 'value', values = 'variable')
@@ -72,3 +79,7 @@ rank2 = pd.melt(rank.reset_index(), id_vars='index').sort_values(by=['index', 'v
 rank2 = rank2[rank2['value'].notna()]
 rank3 = rank2.pivot(index = 'index', columns = 'value', values = 'variable')
 rank3
+
+
+foo = foo.transpose()
+foo['rank'] = foo.sort_values(by=)
