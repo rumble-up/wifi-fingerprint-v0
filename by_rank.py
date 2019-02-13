@@ -13,11 +13,16 @@ Known issues:
 """
 # %% Assumptions in the model -------------------------------------------------
 
+top_rank_num = 5        # Consider the top ___ Wifi signals
+bot_rank_num = 3        # Use the __ weakest Wifi signals
+
 x100_to_na = True                 # All 100 values are replaced by NaNs
+
 drop_null_training_waps = False 
 
 drop_na_rows = True  
-''' There 76 out of 19,937 rows full of NaNs
+'''DECISION: Drop.  Assume NaNs are a function of phone, not location.
+FREQUENCY: 76 of 19,937 rows full of NaNs
 Mostly from PHONEID 1, seems like other datapoints for those locations available  
 But is no signal a function of the location or the phone?
 For now, assume it's produced by the phone, drop NaN rows
@@ -66,7 +71,6 @@ if x100_to_na: df = df.replace(100, np.nan)
 # Count observations per row
 df['sig_count'] = 520 - df[wap_names].isnull().sum(axis=1)
 
-foo = df[df.duplicated()]
 
 # Implement assumptions
 if drop_na_rows: df = df[df['sig_count'] != 0]
@@ -79,21 +83,27 @@ if drop_duplicate_rows: df = df.drop_duplicates()
 # Set seed
 np.random.seed(42)
 
-# Create small random noise 
-noise = np.random.rand(*df[wap_names].shape) / 10000.0 
+# Add noise to each signal so that ties are broken randomly 
+noisy = df[wap_names] + (np.random.rand(*df[wap_names].shape) / 10000.0) 
 
-# Add noise to each signal so that ties are broken randomly
+#### Rank Strongest Signals ####
 # Rank along each row
-rank = (df[wap_names] + noise).rank(axis=1)
+hi_rank = noisy.rank(axis=1, ascending=False)
 
-# Melt into long form, order by row number and rank
-rank = pd.melt(rank.reset_index(), id_vars='index').sort_values(by=['index', 'value'])
+# Melt into long form, order by row number and rank for debugging
+hi_rank = pd.melt(hi_rank.reset_index(), id_vars='index').sort_values(by=['index', 'value'])
 
 # Drop na values
-rank = rank[rank['value'].notna()]
+hi_rank = hi_rank[hi_rank['value'].notna()]
 
 # Pivot back to have the columns be first rank, second rank, etc
-rank = rank.pivot(index = 'index', columns = 'value', values = 'variable')
+hi_rank = hi_rank.pivot(index = 'index', columns = 'value', values = 'variable')
+
+#### Rank Weakest Signals ####
+
+low_rank = noisy.rank(axis=1, ascending=True)
+low_rank = pd.melt(low_rank.reset_index(), id_vars='index').dropna()
+low_rank = low_rank.pivot(index = 'index', columns = 'value', values = 'variable')
 
 
 
