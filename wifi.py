@@ -3,6 +3,9 @@
 import numpy as np  # for calculations
 import pandas as pd  # for dataframes
 import sklearn  # for caret
+from sklearn.svm import LinearSVC
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score
 # import statsmodel.api as sm  # DOESN'T WORK
 import matplotlib.pyplot as plt
 plt.close('all')
@@ -27,7 +30,6 @@ train = pd.read_csv('data/trainingData.csv')
 # =============================================================================
 # train['TIMESTAMP'] = pd.to_datetime(train['TIMESTAMP'])
 # =============================================================================
-
 
 #%%
 ## Initial plot
@@ -61,7 +63,6 @@ plt.figure()
 ## PhoneID dBm boxplots
 train_phone = train.drop(['LATITUDE', 'LONGITUDE', 'USERID', 'FLOOR', 'BUILDINGID', 'SPACEID',
                           'RELATIVEPOSITION', 'TIMESTAMP'], axis = 1)
-
 melted_phone = pd.melt(train_phone, id_vars=['PHONEID'], var_name='WAP')
 melted_phone = melted_phone[melted_phone['value'] != 100]
 melted_phone.boxplot(by = "PHONEID", column = "value")
@@ -101,22 +102,27 @@ wap02 = list(set(wap0) & set(wap2))
 
 #%%
 # Saving objects to file
-
-with open('data/file_wap01.pkl', 'wb') as f:
-    pickle.dump(wap01, f)
+# =============================================================================
+# wap_building = dict(wap01 = wap01, wap12 = wap12, wap02 = wap02, wap0 = wap0, wap1 = wap1, wap2 = wap2)
+# 
+# with open('data/wap_buildings.pkl', 'wb') as f:
+#     pickle.dump(wap_building, f)
+# =============================================================================
 
 #%%
 # Frequency of the WAPs
 wapcount = melted_table['WAP'].value_counts()
 wapcount.plot.hist()
 
-py.iplot(go.Histogram(), filename='wap frequency histogram')  # ValueError: The first argument to the plotly.graph_objs.Histogram constructor must be a dict or an instance of plotly.graph_objs.Histogram 
-
+py.iplot(go.Histogram(), filename='wap frequency histogram')  # ValueError: The first argument to the 
+# plotly.graph_objs.Histogram constructor must be a dict or an instance of plotly.graph_objs.Histogram 
 
 #%%
 ## Check unique train/validation points
 # Load validation set
 val = pd.read_csv('data/validationData.csv')
+
+#%%
 # Melt for long format
 melted_val = pd.melt(val, id_vars=['PHONEID', 'LATITUDE', 'LONGITUDE', 
                                        'FLOOR', 'BUILDINGID', 
@@ -150,4 +156,60 @@ fg = seaborn.FacetGrid(data=all_loc, hue='dataset')
 fg.map(plt.scatter, 'LATITUDE', 'LONGITUDE').add_legend()
 
 #%%
-# 
+## Ranking APs per row
+# Changing 100s to something else
+train = train.replace(100, -110)
+# Finding the top APs for one row and changing others to NAs
+shookones = train.iloc[:,:520].stack().groupby(level=0).nlargest(10).unstack().reset_index(level=1, drop=True).reindex(columns=train.iloc[:,:520].columns)
+
+
+#%%
+#### Modeling
+
+### 1- Basic Model from all data
+
+# Remove the target variables from the training set
+y1 = train.pop('BUILDINGID').values
+y2 = train.pop('FLOOR').values
+y3 = train.pop('LATITUDE').values
+y4 = train.pop('LONGITUDE').values
+
+# Changing type to to ndarray
+
+# Cross validation
+
+# Features and targets normalization
+scalarX, scalary = MinMaxScaler(), MinMaxScaler()
+scalarX.fit(X)
+scalary.fit(y)
+
+## SVM
+#create an object of type LinearSVC
+svc_model = LinearSVC(random_state=0)
+
+#train the algorithm on training data and predict using the testing data
+print (train.iloc[:, :520].shape)
+print (y1.shape)
+print (val.iloc[:, :520].shape)
+print (val.iloc[:, 523].shape)
+pred1 = svc_model.fit(train.iloc[:, :520], y1).predict(val.iloc[:, :520])
+
+#print the accuracy score of the model
+print ("LinearSVC accuracy : ", accuracy_score(val.iloc[:, 523], pred1, normalize = True))
+
+# Save model
+
+
+
+## KNN
+#create object of the lassifier
+neigh = KNeighborsClassifier(n_neighbors=3)
+
+#Train the algorithm
+neigh.fit(train.iloc[:, :520], y1)
+
+# predict the response
+pred2 = neigh.predict(val.iloc[:, :520])
+
+# evaluate accuracy
+print ("KNeighbors accuracy score : ",accuracy_score(val.iloc[:, 523], pred2))
