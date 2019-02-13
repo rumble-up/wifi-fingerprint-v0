@@ -13,7 +13,7 @@ Predict location from UJIIndoorLoc dataset
 
 * 486 observations of unusually high outlier signals above -30 dBm: 
   - 450 (88%) from user 6, phone 19 (floors 3 & 4?)
-  - Quick fix: drop values above -30 dBm
+  - Quick fix? drop values above -30 dBm
 
 * Do we mix training & validation for final model? 
 

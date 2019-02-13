@@ -11,9 +11,34 @@ Known issues:
   * Rank method - if two signals equal -84 and -84 is it fair to give them separate ranks? 
 
 """
-# %% Assumptions in these calculations --------------------------------------------------------------
-unknown_na = True # All 100 values are replaced by NaNs
+# %% Assumptions in the model -------------------------------------------------
 
+x100_to_na = True                 # All 100 values are replaced by NaNs
+drop_null_training_waps = False 
+
+drop_na_rows = True  
+''' There 76 out of 19,937 rows full of NaNs
+Mostly from PHONEID 1, seems like other datapoints for those locations available  
+But is no signal a function of the location or the phone?
+For now, assume it's produced by the phone, drop NaN rows
+'''
+  
+drop_duplicate_rows = False
+'''DECISION: Keep duplicates.
+FREQUENCY: 637 of 19,861 rows contain duplicated information.
+It looks like for some locations, 20/40 observations are duplicates
+This indicates to me that a single phone took 10 exactly same measurements
+Assumption - it's better to keep 20 measurements per point, 
+even if half of them are identical.
+COUNTER-ARGUMENT:  Should one measurement be weighted 10 times for a location?
+This actually may not be a problem for the rank method
+
+EXAMPLE: single location with 10/20 duplicated observations  
+bar = df[(df['LONGITUDE'] == -7390.761199999601) & 
+          (df['LATITUDE'] == 4864835.141000004) &
+          (df.SPACEID == 147)]
+barred = bar[bar.duplicated()]
+'''
 # %% Setup --------------------------------------------------------------------
 
 # Change working directory to the folder where script is stored.
@@ -35,10 +60,19 @@ wap_names = [col for col in df_raw if col.startswith('WAP')]
 # Temporary - choose if working with full dataframe or subset
 df = df_raw
 
-if unknown_na: df = df.replace(100, np.nan)
+if x100_to_na: df = df.replace(100, np.nan)
+
 
 # Count observations per row
 df['sig_count'] = 520 - df[wap_names].isnull().sum(axis=1)
+
+foo = df[df.duplicated()]
+
+# Implement assumptions
+if drop_na_rows: df = df[df['sig_count'] != 0]
+if drop_duplicate_rows: df = df.drop_duplicates()
+
+
 
 # %% Rank signals with random tie-breaking ------------------------------------
 
