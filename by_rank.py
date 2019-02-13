@@ -11,14 +11,18 @@ Known issues:
   * Rank method - if two signals equal -84 and -84 is it fair to give them separate ranks? 
 
 """
-# %% Assumptions in the model -------------------------------------------------
+# %% Model Settings  -------------------------------------------------
 
-top_rank_num = 5        # Consider the top ___ Wifi signals
-bot_rank_num = 3        # Use the __ weakest Wifi signals
+top_num = 5        # Consider the top ___ Wifi signals
+bot_num = 3        # Use the __ weakest Wifi signals
+keep = ['LATITUDE', 'LONGITUDE', 'FLOOR', 'BUILDINGID', 'sig_count']
+
+
+# %% Model and Data Assumptions -------------------------------------------------
 
 x100_to_na = True                 # All 100 values are replaced by NaNs
 
-drop_null_training_waps = False 
+drop_null_training_waps = False   # Shouldn't matter for rank method
 
 drop_na_rows = True  
 '''DECISION: Drop.  Assume NaNs are a function of phone, not location.
@@ -86,25 +90,39 @@ np.random.seed(42)
 # Add noise to each signal so that ties are broken randomly 
 noisy = df[wap_names] + (np.random.rand(*df[wap_names].shape) / 10000.0) 
 
-#### Rank Strongest Signals ####
+# ---------- Rank Strongest Signals ----------
 # Rank along each row
 hi_rank = noisy.rank(axis=1, ascending=False)
 
-# Melt into long form, order by row number and rank for debugging
+# Melt into long form, order by row number and rank (easier to see order and debug)
 hi_rank = pd.melt(hi_rank.reset_index(), id_vars='index').sort_values(by=['index', 'value'])
 
 # Drop na values
-hi_rank = hi_rank[hi_rank['value'].notna()]
+hi_rank = hi_rank.dropna()
 
 # Pivot back to have the columns be first rank, second rank, etc
 hi_rank = hi_rank.pivot(index = 'index', columns = 'value', values = 'variable')
 
-#### Rank Weakest Signals ####
+# ---------- Rank Weakest Signals ----------
 
 low_rank = noisy.rank(axis=1, ascending=True)
 low_rank = pd.melt(low_rank.reset_index(), id_vars='index').dropna()
 low_rank = low_rank.pivot(index = 'index', columns = 'value', values = 'variable')
 
+
+
+# %% Build dataframe with selected attributes ---------------------------------
+
+# Change column names to be unique, remove last two characters
+hi_rank.columns = [('hi' + str(name))[:-2] for name in hi_rank.columns]
+low_rank.columns = [('lo' + str(name))[:-2] for name in low_rank.columns]
+
+# Original location columns
+df_rank = df[keep]
+# Add hi/lo rank columns
+df_rank = df_rank.join(hi_rank.ix[:, 0:top_num]).join(low_rank.ix[:, 0:bot_num])
+
+df_rank.dtypes
 
 
 
@@ -113,17 +131,4 @@ plot([trace])
 
 #%% Sandbox/Archive
 
-# Example of ranking within row with nans
-foo = pd.DataFrame(dict(WAP001 = [2, 5, 17],
-                   WAP002 = [3, np.nan, 1],
-                   WAP003 = [15, np.nan, np.nan]))
 
-rank = foo.rank(axis=1)
-rank2 = pd.melt(rank.reset_index(), id_vars='index').sort_values(by=['index', 'value'])
-rank2 = rank2[rank2['value'].notna()]
-rank3 = rank2.pivot(index = 'index', columns = 'value', values = 'variable')
-rank3
-
-
-foo = foo.transpose()
-foo['rank'] = foo.sort_values(by=)
