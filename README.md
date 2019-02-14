@@ -15,6 +15,8 @@ Predict location from UJIIndoorLoc dataset
   - 450 (88%) from user 6, phone 19 (floors 3 & 4?)
   - Quick fix? drop values above -30 dBm
 
+* A corner of floor 4
+
 * Do we mix training & validation for final model? 
 
 

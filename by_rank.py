@@ -16,6 +16,7 @@ Known issues:
 top_num = 5        # Consider the top ___ Wifi signals
 bot_num = 3        # Use the __ weakest Wifi signals
 keep = ['LATITUDE', 'LONGITUDE', 'FLOOR', 'BUILDINGID', 'sig_count']
+s_num = 200        # Samples per building/floor, if 0, use all data
 
 
 # %% Model and Data Assumptions -------------------------------------------------
@@ -61,13 +62,24 @@ import numpy as np
 import plotly.graph_objs as go
 from plotly.offline import plot
 
+from sklearn import tree
+
 #%% Load data
 
 df_raw = pd.read_csv('data/trainingData.csv')
 wap_names = [col for col in df_raw if col.startswith('WAP')]
 
-# Temporary - choose if working with full dataframe or subset
-df = df_raw
+# Select subset or sample of full data, if any
+if s_num > 0:
+    # Sample by building/floor
+    df = df_raw.groupby(['BUILDINGID', 'FLOOR']).apply(lambda x: x.sample(s_num))
+    df = df.reset_index(drop=True)
+else:
+    df = df_raw
+    
+
+
+
 
 if x100_to_na: df = df.replace(100, np.nan)
 
@@ -127,7 +139,46 @@ df_rank = df[keep].join(ranks)
 df_rank[['BUILDINGID', 'FLOOR']] = df_rank[['BUILDINGID', 'FLOOR']].apply(lambda x: x.astype('category'))
 df_rank.dtypes
 
+# %% Build Decision Tree Model ------------------------------------------------
+target = df_rank['BUILDINGID']
+data = df_rank[['sig_count']] #, 'hi1']]
+clf = tree.DecisionTreeClassifier()
+clf = clf.fit(data, target)
 
-#%% Sandbox/Archive
+# Categorical variables
+# https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.FeatureHasher.html
+# https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.OneHotEncoder.html#sklearn.preprocessing.OneHotEncoder
+# https://stackoverflow.com/questions/38108832/passing-categorical-data-to-sklearn-decision-tree
+
+# Random forest example
+# http://localhost:8888/notebooks/Dropbox/0Python/courses/1701-portilla/Lec%2086%20-%20Decision%20Trees%20and%20Random%20Forests.ipynb
+
+from sklearn.externals.six import StringIO
+from IPython.display import Image
+from sklearn.tree import export_graphviz
+import pydotplus
+
+dot_data = StringIO()
+
+export_graphviz(clf, out_file=dot_data,
+               filled = True, rounded=True,
+               special_characters=True)
+
+graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
+Image(graph.create_png())
 
 
+import graphviz
+dot_data = tree.export_graphviz(clf, out_file=None)
+graph = graphviz.Source(dot_data)
+graph
+
+# %% Sandbox/Archive
+
+# Storing mutliple variables!!!
+# https://stackoverflow.com/questions/2960864/how-can-i-save-all-the-variables-in-the-current-python-session
+
+from sklearn.datasets import load_iris
+
+iris = load_iris()
+iris.target
