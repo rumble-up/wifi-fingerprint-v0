@@ -124,6 +124,7 @@ ranks = ranks.apply(lambda x: x.astype('category'))
 
 # Compile full data frame
 df_rank = df[keep].join(ranks)
+df_rank[['BUILDINGID', 'FLOOR']] = df_rank[['BUILDINGID', 'FLOOR']].apply(lambda x: x.astype('category'))
 df_rank.dtypes
 
 
