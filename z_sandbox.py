@@ -6,6 +6,52 @@ Created on Thu Feb 14 12:42:34 2019
 @author: chief
 """
 
+# Load the library with the iris dataset
+from sklearn.datasets import load_iris
+
+# Load scikit's random forest classifier library
+from sklearn.ensemble import RandomForestClassifier
+
+# Load pandas
+import pandas as pd
+
+# Load numpy
+import numpy as np
+
+# Set random seed
+np.random.seed(42)
+
+# Create an object called iris with the iris data
+iris = load_iris()
+
+# Create a dataframe with the four feature variables
+df = pd.DataFrame(iris.data, columns=iris.feature_names)
+
+# View the top 5 rows
+df.head()
+
+# Add a new column with the species names, this is what we are going to try to predict
+df['species'] = pd.Categorical.from_codes(iris.target, iris.target_names)
+
+df['is_train'] = np.random.uniform(0, 1, len(df)) <= .75
+train, test = df[df['is_train']==True], df[df['is_train']==False]
+
+print('Number of observations in the training data:', len(train))
+print('Number of observations in the test data:',len(test))
+
+features = df.columns[:4]
+
+
+
+
+from sklearn.preprocessing import OneHotEncoder
+enc = OneHotEncoder(handle_unknown = 'ignore')
+X = [['Male', 1], ['Female', 3], ['Female', 2]]
+enc.fit(X)
+
+enc.categories_
+
+
 import pandas as pd
 import plotly.graph_objs as go
 from plotly.offline import plot

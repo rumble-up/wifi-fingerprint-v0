@@ -13,10 +13,14 @@ Known issues:
 """
 # %% Model Settings  -------------------------------------------------
 
-top_num = 5        # Consider the top ___ Wifi signals
-bot_num = 3        # Use the __ weakest Wifi signals
+top_num = 10       # Consider the top ___ Wifi signals
+bot_num = 1        # Use the __ weakest Wifi signals
 keep = ['LATITUDE', 'LONGITUDE', 'FLOOR', 'BUILDINGID', 'sig_count']
-s_num = 200        # Samples per building/floor, if 0, use all data
+s_num = 0        # Samples per building/floor, if 0, use all data
+
+# NOT FIXED FOR SAMPLING YET
+rand = 42          # Set the random seed number
+ # Set seed for random tie-breaking
 
 
 # %% Model and Data Assumptions -------------------------------------------------
@@ -62,7 +66,7 @@ import numpy as np
 import plotly.graph_objs as go
 from plotly.offline import plot
 
-from sklearn import tree
+from sklearn.ensemble import RandomForestClassifier
 
 #%% Load data
 
@@ -97,8 +101,7 @@ if drop_duplicate_rows: df = df.drop_duplicates()
 
 # %% Rank signals with random tie-breaking ------------------------------------
 
-# Set seed
-np.random.seed(42)
+np.random.seed(rand)
 
 # Add noise to each signal so that ties are broken randomly 
 noisy = df[wap_names] + (np.random.rand(*df[wap_names].shape) / 10000.0) 
@@ -122,15 +125,15 @@ low_rank = noisy.rank(axis=1, ascending=True)
 low_rank = pd.melt(low_rank.reset_index(), id_vars='index').dropna()
 low_rank = low_rank.pivot(index = 'index', columns = 'value', values = 'variable')
 
-
-# %% Build dataframe with selected attributes ---------------------------------
-
 # Change column names to be unique, remove last two characters
 hi_rank.columns = [('hi' + str(name))[:-2] for name in hi_rank.columns]
 low_rank.columns = [('lo' + str(name))[:-2] for name in low_rank.columns]
 
+# %% Build dataframe with selected attributes ---------------------------------
+
+
 # Select only the top __ and the bottom ___
-ranks = hi_rank.ix[:, 0:top_num].join(low_rank.ix[:, 0:bot_num])
+ranks = hi_rank.iloc[:, 0:top_num].join(low_rank.iloc[:, 0:bot_num])
 # Change to categorical variables
 ranks = ranks.apply(lambda x: x.astype('category'))
 
@@ -140,12 +143,46 @@ df_rank[['BUILDINGID', 'FLOOR']] = df_rank[['BUILDINGID', 'FLOOR']].apply(lambda
 df_rank.dtypes
 
 # %% Build Decision Tree Model ------------------------------------------------
-target = df_rank['BUILDINGID']
-data = df_rank[['sig_count']] #, 'hi1']]
-clf = tree.DecisionTreeClassifier()
-clf = clf.fit(data, target)
+
+# Roughly 227 categories
+
+# Albon try
+
+y =pd.factorize(df_rank['FLOOR'])[0]
+
+# Create a list of factors we're looking at
+factors = [('hi' + str(i)) for i in range(1, top_num+1)]
+
+
+df_big = pd.DataFrame()
+
+for f in factors:
+    dft = pd.get_dummies(df_rank[f])
+    dft.columns = [(f + str(col)) for col in dft.columns]
+    df_big = df_big.join(dft, how = 'outer')
+
+
+# Can only use categorical now.
+
+# Create random forest classifier
+# n_jobs = 2 -> use two processors
+clf = RandomForestClassifier(n_jobs=2, random_state = rand)
+clf.fit(df_big, y)
+train_rez = clf.predict(df_big)
+pd.crosstab(y, train_rez, rownames=['Actual'], colnames=['Predicted'])
+
+clf.score(df_big,y)
+
+
+
+
+list(zip(both, clf.feature_importances_))
+
+
 
 # Categorical variables
+# http://queirozf.com/entries/one-hot-encoding-a-feature-on-a-pandas-dataframe-an-example
+
 # https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.FeatureHasher.html
 # https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.OneHotEncoder.html#sklearn.preprocessing.OneHotEncoder
 # https://stackoverflow.com/questions/38108832/passing-categorical-data-to-sklearn-decision-tree
@@ -153,25 +190,7 @@ clf = clf.fit(data, target)
 # Random forest example
 # http://localhost:8888/notebooks/Dropbox/0Python/courses/1701-portilla/Lec%2086%20-%20Decision%20Trees%20and%20Random%20Forests.ipynb
 
-from sklearn.externals.six import StringIO
-from IPython.display import Image
-from sklearn.tree import export_graphviz
-import pydotplus
 
-dot_data = StringIO()
-
-export_graphviz(clf, out_file=dot_data,
-               filled = True, rounded=True,
-               special_characters=True)
-
-graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
-Image(graph.create_png())
-
-
-import graphviz
-dot_data = tree.export_graphviz(clf, out_file=None)
-graph = graphviz.Source(dot_data)
-graph
 
 # %% Sandbox/Archive
 
