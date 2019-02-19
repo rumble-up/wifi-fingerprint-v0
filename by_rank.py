@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Status: IN PROGRESS
-Purpose: Reformat data by rank from UJIIndoorLoc dataset
+Status: On hold - model predictions are worthless for validation set
+Purpose: Reformat data by rank from UJIIndoorLoc dataset, 
+         Create floor prediction from Random Forest
 
 Created on Tue Feb 12 16:56:40 2019
 @author: Laura Stupin
@@ -66,8 +67,6 @@ chdir(wd)
 
 import pandas as pd
 import numpy as np
-import pickle
-
 import plotly.graph_objs as go
 from plotly.offline import plot
 
