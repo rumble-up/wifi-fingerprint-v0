@@ -39,7 +39,9 @@ from plotly.offline import plot
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import cohen_kappa_score
 
+import xgboost as xgb
 
 #%% Load data -----------------------------------------------------------------
 
@@ -89,7 +91,7 @@ if drop_duplicate_rows: df = df.drop_duplicates()
 # Replace Na's with the selected number
 df = df.replace(np.nan, x100)
 
-# %% Random Forest Model ------------------------------------------------------
+# %% Floor Random Forest Model --------------------------------------------
 
 df_full = df[(df.dataset == 'validate') |(df.dataset == 'train')]
 X = df_full[wap_names]
@@ -106,3 +108,41 @@ clf10 = clf10.fit(X_train, y_train)
 clf10pred = clf10.predict(X_test)
 pd.crosstab(y_test, clf10pred, rownames=['Actual'], colnames=['Predicted'])
 clf10.score(X_test, y_test)
+cohen_kappa_score(clf10pred, y_test)
+
+# 80 trees
+clf20 = RandomForestClassifier(n_jobs =2, random_state=rand, n_estimators = 80)
+clf20 = clf20.fit(X_train, y_train)
+
+clf20pred = clf20.predict(X_test)
+pd.crosstab(y_test, clf20pred, rownames=['Actual'], colnames=['Predicted'])
+clf20.score(X_test, y_test)
+cohen_kappa_score(clf20pred, y_test)
+
+
+# %% Latitude XGB Model --------------------------------------------
+y = df_full['LATITUDE']
+
+X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size = 0.25, random_state = rand)
+
+
+param = {'max_depth':6, 'objective':'reg:linear'}
+
+
+dtrain = xgb.DMatrix(X_train, label=y_train)
+dtest = xgb.DMatrix(X_test, label=y_test)
+
+evallist = [(dtest, 'eval'), (dtrain, 'train')]
+
+# 400 was plenty
+num_round = 600
+bst = xgb.train(param, dtrain, num_round, evallist)
+bst.save_model('models/xgb600.model')
+
+# Output array of predictions
+xgbpred = bst.predict(dtest)
+
+print('The Latitude MAE is:', abs(xgbpred - y_test).mean())
+
+# %% Longitude MAE model ------------------------------------------------------
