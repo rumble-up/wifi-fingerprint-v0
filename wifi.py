@@ -229,7 +229,7 @@ deneme = pd.DataFrame(train.iloc[0, :520].sort_values(axis = 0, ascending = Fals
 #%%
 #### MODELING
 
-### 1- Basic Model from all data
+### 1- BUILDING - Models on Preprocessed Data
 
 # Remove the target variables from the training set
 y1 = sample_train.pop('BUILDINGID').values
@@ -273,6 +273,9 @@ fit_xgb1 = xgb1.fit(train_waps, y1)
 pred_xgb1 = fit_xgb1.predict(val_waps)
 xgb1.score(train_waps, y1)
 accuracy_score(val_build, pred_xgb1)
+
+### 2- FLOOR - Models on Preprocessed Data
+
 
 # Save models to file
 # models = dict(fit_svc1 = fit_svc1, fit_knn1 = fit_knn1, fit_xgb1)
