@@ -191,17 +191,21 @@ trainX = train[wap_dum_names]
 
 # Create random forest classifier
 # n_jobs = 2 -> use two processors
-clf20 = RandomForestClassifier(n_jobs=2, random_state = rand, n_estimators = 20)
-clf20.fit(trainX, target)
+clf05 = RandomForestClassifier(n_jobs=2, random_state = rand, n_estimators = 5)
+clf05.fit(trainX, target)
+
+#clf20 = 20 trees
 
 # %% Testing data -------------------------------------------------------------
-testActual = test['FLOOR']
+testActual = pd.factorize(test['FLOOR'])[0]
 
 # Keep only WAP info
 testX = test[wap_dum_names]
 
 clf20pred = clf20.predict(testX)
-pd.crosstab(testActual, clf20pred, rownames=['Actual'], colnames=['Predicted'])
+clf05pred = clf05.predict(testX)
+
+pd.crosstab(testActual, clf05pred, rownames=['Actual'], colnames=['Predicted'])
 
 clf20pred[0:10]
 real.head(10)
