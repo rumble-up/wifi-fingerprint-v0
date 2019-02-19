@@ -40,22 +40,9 @@ val = pd.read_csv('data/validationData.csv')
 
 #%%
 ### PREPROCESSING
-
 ## Changing 100s to something else
 train = train.replace(100, -110)
 val = val.replace(100, -110)
-
-# Prepare train and val waps objects
-train_waps = train.iloc[:, :520]
-val_waps = val.iloc[:, :520]
-val_build = val.iloc[:, 523]
-
-# Reorder columns
-train_dep = train.iloc[:, 520:]
-cols = train_dep.columns.tolist()
-cols = [cols[3]] + [cols [2]] + cols [0:2] + cols[4:]
-train_dep = train_dep[cols]
-train = pd.concat([train_waps, train_dep], axis=1)
 
 ## Removing zero variance columns
 train2 = train.loc[:, train.apply(pd.Series.nunique) != 1]
@@ -73,11 +60,26 @@ cols312 = list(item for item in val_cols if item not in tra_cols)
 
 # Removing extra APs from the sample_train to have 312 APs
 sample_train = sample_train[cols312] 
+sample_train = sample_train.reset_index(drop=True) # clear the additional indexes
+val = val[cols312]
+
+# Prepare train and val waps objects
+train_waps = sample_train.iloc[:, :312]
+val_waps = val.iloc[:, :312]
+val_build = val.iloc[:, 315]
+
+# Reorder columns
+train_dep = sample_train.iloc[:, 312:]
+cols = train_dep.columns.tolist()
+cols = [cols[3]] + [cols [2]] + cols [0:2] + cols[4:]
+train_dep = train_dep[cols]
+sample_train = pd.concat([train_waps, train_dep], axis=1)
 
 # Removing values stronger than -30
 
 
 #%%
+### VISUALIZATION
 ## Initial plot
 list(train)
 mainplot = train.plot.scatter(x= "LATITUDE", y= "LONGITUDE")
@@ -92,7 +94,6 @@ for user in users:
 ## Plot with color per user
 train.plot.scatter(x= "LATITUDE", y= "LONGITUDE", c= "USERID")  # how to put colors instead of grayscale
 
-#%%
 ## PLot 3D with floors
 tdplot = plt.figure().gca(projection='3d')
 tdplot.scatter(xs=train["LATITUDE"], ys=train["LONGITUDE"], zs=train["FLOOR"], c=train["FLOOR"])
@@ -101,11 +102,8 @@ plt.show()
 plt.figure()
 
 #%%
-## Plotly plots
-
-
-#%%
-## PhoneID dBm boxplots
+### DATA EXPLORATION
+# PhoneID dBm boxplots
 train_phone = train.drop(['LATITUDE', 'LONGITUDE', 'USERID', 'FLOOR', 'BUILDINGID', 'SPACEID',
                           'RELATIVEPOSITION', 'TIMESTAMP'], axis = 1)
 melted_phone = pd.melt(train_phone, id_vars=['PHONEID'], var_name='WAP')
@@ -113,6 +111,7 @@ melted_phone = melted_phone[melted_phone['value'] != 100]
 melted_phone.boxplot(by = "PHONEID", column = "value")
 
 #%%
+### DATA EXPLORATION
 ## WAP distribution per building and floor
 # Melt for long format
 melted_table = pd.melt(train, id_vars=['PHONEID', 'LATITUDE', 'LONGITUDE', 'USERID', 
@@ -155,6 +154,7 @@ wap02 = list(set(wap0) & set(wap2))
 # =============================================================================
 
 #%%
+### VISUALIZATION
 # Frequency of the WAPs
 wapcount = melted_table['WAP'].value_counts()
 wapcount.plot.hist()
@@ -163,6 +163,7 @@ py.iplot(go.Histogram())  # ValueError: The first argument to the
 # plotly.graph_objs.Histogram constructor must be a dict or an instance of plotly.graph_objs.Histogram 
 
 #%%
+### VISUALIZATION 
 # Melt for long format
 melted_val = pd.melt(val, id_vars=['PHONEID', 'LATITUDE', 'LONGITUDE', 
                                        'FLOOR', 'BUILDINGID', 
@@ -171,7 +172,7 @@ melted_val = pd.melt(val, id_vars=['PHONEID', 'LATITUDE', 'LONGITUDE',
 melted_val = melted_val[melted_val['value'] != 100]
 
 tra_wap = melted_table['WAP'].unique().tolist()  # 465, correct
-val_wap = melted_val['WAP'].unique().tolist()  # Why do i have 370 not 367??
+val_wap = melted_val['WAP'].unique().tolist()  # 370, 3 additional 
 
 # Finding the common WAPs
 common_waps = list(set(tra_wap) & set(val_wap))  # 312, correct
@@ -182,6 +183,7 @@ tra_loc = tra_loc.drop(['SPACEID', 'RELATIVEPOSITION', 'USERID'], axis = 1)
 val_loc = melted_val.drop_duplicates(subset= ['LATITUDE', 'LONGITUDE'])
 
 #%%
+### VISUALIZATION
 # Joining them for plotting in same plot
 tra_loc['dataset'] = 'training'
 val_loc['dataset'] = 'validation'
@@ -190,22 +192,19 @@ all_loc = pd.concat([tra_loc, val_loc])
 tra_loc.plot.scatter(x= "LATITUDE", y= "LONGITUDE")
 val_loc.plot.scatter(x= "LATITUDE", y= "LONGITUDE")
 
-#%%
 # Training and validation unique points plot
 fg = seaborn.FacetGrid(data=all_loc, hue='dataset')
 fg.map(plt.scatter, 'LATITUDE', 'LONGITUDE').add_legend()
 
 
 #%%
-### Taking top k signal WAPs from each row 
+### PREPROCESSING - TRAINING SET 2 - Taking top k signal WAPs from each row 
 
 ## Some loop to choose the top APs
 # K i want for the job
 k = 10  
-
 # Preparing the dfs to fill
 topdf_values = pd.DataFrame(columns=range(k),index=range(19937))
-
 
 # Loop for taking the signal strengths
 for i in range(len(train.index)):
@@ -221,14 +220,14 @@ deneme = pd.DataFrame(train.iloc[0, :520].sort_values(axis = 0, ascending = Fals
 
 
 #%%
-# Convert building and floor to categoric ()
+## Convert building and floor to categoric ()
 # =============================================================================
 # train['BUILDINGID'] = train['BUILDINGID'].astype('category')
 # train['FLOOR'] = train['FLOOR'].astype('category')
 # =============================================================================
 
 #%%
-#### Modeling
+#### MODELING
 
 ### 1- Basic Model from all data
 
