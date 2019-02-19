@@ -15,7 +15,7 @@ Known issues:
 
 top_num = 10       # Consider the top ___ Wifi signals
 bot_num = 1        # Use the __ weakest Wifi signals
-keep = ['LATITUDE', 'LONGITUDE', 'FLOOR', 'BUILDINGID', 'sig_count']
+keep = ['LATITUDE', 'LONGITUDE', 'FLOOR', 'BUILDINGID', 'sig_count', 'dataset']
 s_num = 0        # Samples per building/floor, if 0, use all data
 
 # NOT FIXED FOR SAMPLING YET
@@ -113,10 +113,6 @@ if drop_na_rows: df = df[df['sig_count'] != 0]
 if drop_duplicate_rows: df = df.drop_duplicates()
 
 
-
-
-
-
 # %% Rank signals with random tie-breaking ------------------------------------
 
 np.random.seed(rand)
@@ -139,19 +135,19 @@ hi_rank = hi_rank.pivot(index = 'index', columns = 'value', values = 'variable')
 
 # ---------- Rank Weakest Signals ----------
 
-low_rank = noisy.rank(axis=1, ascending=True)
-low_rank = pd.melt(low_rank.reset_index(), id_vars='index').dropna()
-low_rank = low_rank.pivot(index = 'index', columns = 'value', values = 'variable')
+#low_rank = noisy.rank(axis=1, ascending=True)
+#low_rank = pd.melt(low_rank.reset_index(), id_vars='index').dropna()
+#low_rank = low_rank.pivot(index = 'index', columns = 'value', values = 'variable')
 
 # Change column names to be unique, remove last two characters
 hi_rank.columns = [('hi' + str(name))[:-2] for name in hi_rank.columns]
-low_rank.columns = [('lo' + str(name))[:-2] for name in low_rank.columns]
+#low_rank.columns = [('lo' + str(name))[:-2] for name in low_rank.columns]
 
 # %% Build dataframe with selected attributes ---------------------------------
 
 
 # Select only the top __ and the bottom ___
-ranks = hi_rank.iloc[:, 0:top_num].join(low_rank.iloc[:, 0:bot_num])
+ranks = hi_rank.iloc[:, 0:top_num]  #.join(low_rank.iloc[:, 0:bot_num])
 # Change to categorical variables
 ranks = ranks.apply(lambda x: x.astype('category'))
 
@@ -164,33 +160,55 @@ df_rank.dtypes
 
 # Roughly 227 categories
 
-# Albon try
+train = df_rank[df_rank['dataset'] == 'train']
+test = df_rank[df_rank['dataset'] == 'validation']
 
-y =pd.factorize(df_rank['FLOOR'])[0]
+
 
 # Create a list of factors we're looking at
 factors = [('hi' + str(i)) for i in range(1, top_num+1)]
 
 
-df_big = pd.DataFrame()
+df_dummy = pd.DataFrame()
 
 for f in factors:
     dft = pd.get_dummies(df_rank[f])
     dft.columns = [(f + str(col)) for col in dft.columns]
-    df_big = df_big.join(dft, how = 'outer')
+    df_dummy = df_dummy.join(dft, how = 'outer')
+
+df_dummy = df_rank[keep].join(df_dummy)
+
+train = df_dummy[df_dummy['dataset'] == 'train']
+test = df_dummy[df_dummy['dataset'] == 'validation']
 
 
-# Can only use categorical now.
+# %% Training data ------------------------------------------------------------
+target = pd.factorize(train['FLOOR'])[0]
+
+# Reduce train to WAPs only
+wap_dum_names = [col for col in train if col.startswith('hi')]
+trainX = train[wap_dum_names]
 
 # Create random forest classifier
 # n_jobs = 2 -> use two processors
 clf20 = RandomForestClassifier(n_jobs=2, random_state = rand, n_estimators = 20)
-clf20.fit(df_big, y)
-train_rez = clf20.predict(df_big)
-pd.crosstab(y, train_rez, rownames=['Actual'], colnames=['Predicted'])
+clf20.fit(trainX, target)
 
-clf20.score(df_big,y)
+# %% Testing data -------------------------------------------------------------
+testActual = test['FLOOR']
 
+# Keep only WAP info
+testX = test[wap_dum_names]
+
+clf20pred = clf20.predict(testX)
+pd.crosstab(testActual, clf20pred, rownames=['Actual'], colnames=['Predicted'])
+
+clf20pred[0:10]
+real.head(10)
+clf20.score(testX, testActual)
+
+clf20train = clf20.predict(train)
+pd.crosstab(y, clf20train, rownames=['Actual'], colnames=['Predicted'])
 from sklearn.metrics import accuracy_score
 accuracy_score(y, train_rez)
 
