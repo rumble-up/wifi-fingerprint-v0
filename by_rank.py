@@ -24,6 +24,10 @@ rand = 42          # Set the random seed number
 
 
 # %% Model and Data Assumptions -------------------------------------------------
+ 
+testSet = 'validation'            
+# 'validation' - use the validation set to test
+# 'mix' - combine datasets and take a random 80/20 sample
 
 x100_to_na = True                 # All 100 values are replaced by NaNs
 
@@ -62,31 +66,42 @@ chdir(wd)
 
 import pandas as pd
 import numpy as np
+import pickle
 
 import plotly.graph_objs as go
 from plotly.offline import plot
 
 from sklearn.ensemble import RandomForestClassifier
 
-#%% Load data
+#%% Load data -----------------------------------------------------------------
 
-df_raw = pd.read_csv('data/trainingData.csv')
-wap_names = [col for col in df_raw if col.startswith('WAP')]
+# Test data
+df_train = pd.read_csv('data/trainingData.csv')
+df_train['dataset'] = 'train'
+# Validation data
+df_val = pd.read_csv('data/validationData.csv')
+df_val['dataset'] = 'validation'
+
+df_test = pd.read_csv('data/testData.csv')
+df_test['dataset'] = 'test'
+
+# Combine datasets so identical pre-processing will happen to all
+df = pd.concat([df_train, df_val, df_test]).reset_index()
+
+#df = df_train
+
+wap_names = [col for col in df if col.startswith('WAP')]
 
 # Select subset or sample of full data, if any
-if s_num > 0:
-    # Sample by building/floor
-    df = df_raw.groupby(['BUILDINGID', 'FLOOR']).apply(lambda x: x.sample(s_num))
-    df = df.reset_index(drop=True)
-else:
-    df = df_raw
+#if s_num > 0:
+#    # Sample by building/floor
+#    df = df_raw.groupby(['BUILDINGID', 'FLOOR']).apply(lambda x: x.sample(s_num, random_state = rand))
+#    df = df.reset_index(drop=True)
+#else:
+#    df = df_raw
     
 
-
-
-
 if x100_to_na: df = df.replace(100, np.nan)
-
 
 # Count observations per row
 df['sig_count'] = 520 - df[wap_names].isnull().sum(axis=1)
@@ -96,6 +111,9 @@ plot([trace])
 # Implement assumptions
 if drop_na_rows: df = df[df['sig_count'] != 0]
 if drop_duplicate_rows: df = df.drop_duplicates()
+
+
+
 
 
 
@@ -166,19 +184,25 @@ for f in factors:
 
 # Create random forest classifier
 # n_jobs = 2 -> use two processors
-clf = RandomForestClassifier(n_jobs=2, random_state = rand)
-clf.fit(df_big, y)
-train_rez = clf.predict(df_big)
+clf20 = RandomForestClassifier(n_jobs=2, random_state = rand, n_estimators = 20)
+clf20.fit(df_big, y)
+train_rez = clf20.predict(df_big)
 pd.crosstab(y, train_rez, rownames=['Actual'], colnames=['Predicted'])
 
-clf.score(df_big,y)
+clf20.score(df_big,y)
+
+from sklearn.metrics import accuracy_score
+accuracy_score(y, train_rez)
 
 
+clf.estimators_
+clf.classes_
+clf.n_features_
+clf.feature_importances_
 
-
-list(zip(both, clf.feature_importances_))
-
-
+foo = list(zip(df_big, clf.feature_importances_))
+type(foo[0])
+foo[0][1]
 
 # Categorical variables
 # http://queirozf.com/entries/one-hot-encoding-a-feature-on-a-pandas-dataframe-an-example
