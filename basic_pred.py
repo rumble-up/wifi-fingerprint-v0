@@ -38,6 +38,7 @@ import plotly.graph_objs as go
 from plotly.offline import plot
 
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
 
 
 #%% Load data -----------------------------------------------------------------
@@ -47,7 +48,7 @@ df_train = pd.read_csv('data/trainingData.csv')
 df_train['dataset'] = 'train'
 # Validation data
 df_val = pd.read_csv('data/validationData.csv')
-df_val['dataset'] = 'validation'
+df_val['dataset'] = 'validate'
 
 df_test = pd.read_csv('data/testData.csv')
 df_test['dataset'] = 'test'
@@ -87,3 +88,21 @@ if drop_duplicate_rows: df = df.drop_duplicates()
 
 # Replace Na's with the selected number
 df = df.replace(np.nan, x100)
+
+# %% Random Forest Model ------------------------------------------------------
+
+df_full = df[(df.dataset == 'validate') |(df.dataset == 'train')]
+X = df_full[wap_names]
+y = df_full['FLOOR']
+
+
+
+X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size = 0.25, random_state = rand)
+
+clf10 = RandomForestClassifier(n_jobs =2, random_state=rand, n_estimators = 10)
+clf10 = clf10.fit(X_train, y_train)
+
+clf10pred = clf10.predict(X_test)
+pd.crosstab(y_test, clf10pred, rownames=['Actual'], colnames=['Predicted'])
+clf10.score(X_test, y_test)
