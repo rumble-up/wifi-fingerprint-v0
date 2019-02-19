@@ -15,10 +15,13 @@ rand = 42          # Set the random seed number
 
 # %% Model and Data Assumptions -------------------------------------------------
 
-x100 = -110                 # Value to replace NaNs with
+x100 = -110                 # Replace 100s with this value
 drop_null_waps = True       # Drop WAPs not included in both train and validation
 drop_na_rows = True         # If no WAPs recorded, drop row
-drop_duplicate_rows = False #
+drop_duplicate_rows = False # 
+
+# 76 na rows in train, but none in validation or test
+#
 
 # %% Setup --------------------------------------------------------------------
 
@@ -58,5 +61,19 @@ with open('data/wap_groups.pkl', 'rb') as f:
     
 null_waps = wap_groups['null_train'] + wap_groups['null_test']
 
-if drop_null_waps: 
-    df = df.drop(null_waps, axis=1)
+# Drop null WAPs
+if drop_null_waps: df = df.drop(null_waps, axis=1)
+
+# Collect valid WAP names
+wap_names = [col for col in df if col.startswith('WAP')]
+
+# Switch values
+df = df.replace(100, np.nan)
+df['sig_count'] = len(wap_names) - df[wap_names].isnull().sum(axis=1)
+
+# There are 76 NA rows, they appear only in training set
+if drop_na_rows: df = df[df['sig_count'] != 0]
+if drop_duplicate_rows: df = df.drop_duplicates()
+
+# Replace Na's with the selected number
+df = df.replace(np.nan, x100)
