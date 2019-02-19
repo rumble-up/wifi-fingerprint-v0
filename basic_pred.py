@@ -121,6 +121,7 @@ cohen_kappa_score(clf20pred, y_test)
 
 
 # %% Latitude XGB Model --------------------------------------------
+X = df_full[wap_names]
 y = df_full['LATITUDE']
 
 X_train, X_test, y_train, y_test = train_test_split(
@@ -145,4 +146,28 @@ xgbpred = bst.predict(dtest)
 
 print('The Latitude MAE is:', abs(xgbpred - y_test).mean())
 
-# %% Longitude MAE model ------------------------------------------------------
+# %% Longitude XGB model ------------------------------------------------------
+X = df_full[wap_names]
+y = df_full['LONGITUDE']
+
+X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size = 0.25, random_state = rand)
+
+
+param = {'max_depth':6, 'objective':'reg:linear'}
+
+
+dtrain = xgb.DMatrix(X_train, label=y_train)
+dtest = xgb.DMatrix(X_test, label=y_test)
+
+evallist = [(dtest, 'eval'), (dtrain, 'train')]
+
+# 400 was plenty
+num_round = 500
+bst = xgb.train(param, dtrain, num_round, evallist)
+bst.save_model('models/xgbLong500.model')
+
+# Output array of predictions
+xgbpred = bst.predict(dtest)
+
+print('The Longitude MAE is:', abs(xgbpred - y_test).mean())
