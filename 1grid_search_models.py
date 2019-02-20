@@ -47,7 +47,7 @@ test = test.droplevel(level = ['BUILDINGID', 'FLOOR'])
 train = df.drop(test.index)
 
 
-### PSUEDO FUNCTION #########################################################
+### CHANGE TO FUNCTION #########################################################
 target = 'LATITUDE'
     
 y = df[target]  
