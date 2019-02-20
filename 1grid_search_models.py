@@ -8,6 +8,11 @@ Created on Wed Feb 20 16:44:05 2019
 
 @author: Laura Stupin
 """
+
+# %% Assumptions  --------------------------------------------------------------------
+
+rand = 42
+
 # %% Setup --------------------------------------------------------------------
 
 # Change working directory to the folder where script is stored.
@@ -16,8 +21,61 @@ wd=getcwd()
 chdir(wd)
 
 import pandas as pd
+import xgboost as xgb
+from sklearn.model_selection import GridSearchCV, train_test_split
 
-# %% Read in processed data
 
-df = pd.read_csv('data/processed/df.csv')
+# %% Prepare test/train
 
+df_all = pd.read_csv('data/processed/df.csv')
+
+wap_names = [col for col in df_all if col.startswith('WAP')]
+
+df = df_all[df_all['dataset'] != 'test']
+
+
+
+#def testTrain(target, X):
+#    ''' target = {'LATITUDE', 'LONGITUDE'}'''
+    
+
+
+# Build a random test sample with 400 observations from each floor, building 
+test = df.groupby(['BUILDINGID', 'FLOOR']).apply(lambda x: x.sample(n = 400, random_state = rand))
+test = test.droplevel(level = ['BUILDINGID', 'FLOOR'])
+# Training is all observations not in test sample
+train = df.drop(test.index)
+
+
+### PSUEDO FUNCTION #########################################################
+target = 'LATITUDE'
+    
+y = df[target]  
+
+
+X = df[wap_names]
+
+
+cv_params = {'max_depth': [3,5]} #,7], 'min_child_weight': [1,3,5]}
+ind_params = {'learning_rate': 0.1, 'n_estimators': 600, 'seed': rand, 
+          'subsample': 0.8, 'colsample_bytree': 0.8, 
+         'objective': 'reg:linear'}
+optimized_GBM = GridSearchCV(xgb.XGBClassifier(**ind_params), cv_params, 
+                         scoring = 'neg_mean_absolute_error', 
+                         cv = 5, n_jobs = 2) 
+    
+
+
+X_trainLAT, X_testLAT, y_trainLAT, y_testLAT = testTrain('LATITUDE', X)
+X_trainLON, X_testLON, y_trainLON, y_testLON = testTrain('LONGITUDE', X)
+
+
+cv_params = {'max_depth': [3,5]} #,7], 'min_child_weight': [1,3,5]}
+ind_params = {'learning_rate': 0.1, 'n_estimators': 600, 'seed': rand, 
+              'subsample': 0.8, 'colsample_bytree': 0.8, 
+             'objective': 'reg:linear'}
+optimized_GBM = GridSearchCV(xgb.XGBClassifier(**ind_params), cv_params, 
+                             scoring = 'neg_mean_absolute_error', 
+                             cv = 5, n_jobs = 2) 
+
+lat1 = optimized_GBM.fit(X_trainLAT)

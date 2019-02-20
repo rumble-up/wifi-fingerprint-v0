@@ -89,4 +89,4 @@ if drop_duplicate_rows: df = df.drop_duplicates()
 
 # Replace Na's with the selected number
 df = df.replace(np.nan, x100)
-df.to_csv('data/processed/df.csv', index=False)
+#df.to_csv('data/processed/df.csv', index=False)
