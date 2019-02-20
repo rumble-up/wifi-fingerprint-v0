@@ -71,11 +71,18 @@ for df1 in dfs:
     i = i+1
 
 
+
 # Combine datasets so identical pre-processing will happen to all
 df = pd.concat([df_train, df_val, df_test]).reset_index()
 
+# Load an object in     
+with open('data/wap_max_range.pkl', 'rb') as f:
+    wap_max_range = pickle.load(f)
+    
+noisy_waps = wap_max_range[wap_max_range > 190].index.to_list()
+
 # Drop null WAPs
-null_waps = nulls['test']
+null_waps = nulls['test'] + noisy_waps
 if drop_null_waps: df = df.drop(null_waps, axis=1)
 
 # Collect valid WAP names
@@ -85,7 +92,7 @@ wap_names = [col for col in df if col.startswith('WAP')]
 df = df.replace(100, np.nan)
 df['sig_count'] = len(wap_names) - df[wap_names].isnull().sum(axis=1)
 
-# There are 76 NA rows, they appear only in training set
+# There are 76 NaN rows, they appear only in training set
 if drop_na_rows: df = df[df['sig_count'] != 0]
 if drop_duplicate_rows: df = df.drop_duplicates()
 
@@ -112,13 +119,13 @@ clf10.score(X_test, y_test)
 cohen_kappa_score(clf10pred, y_test)
 
 # 80 trees
-clf20 = RandomForestClassifier(n_jobs =2, random_state=rand, n_estimators = 80)
-clf20 = clf20.fit(X_train, y_train)
+clf80 = RandomForestClassifier(n_estimators = 80, n_jobs =2, random_state=rand)
+clf80 = clf80.fit(X_train, y_train)
 
-clf20pred = clf20.predict(X_test)
-pd.crosstab(y_test, clf20pred, rownames=['Actual'], colnames=['Predicted'])
-clf20.score(X_test, y_test)
-cohen_kappa_score(clf20pred, y_test)
+clf80pred = clf80.predict(X_test)
+pd.crosstab(y_test, clf80pred, rownames=['Actual'], colnames=['Predicted'])
+clf80.score(X_test, y_test)
+cohen_kappa_score(clf80pred, y_test)
 
 
 # %% Latitude XGB Model --------------------------------------------
@@ -140,12 +147,20 @@ evallist = [(dtest, 'eval'), (dtrain, 'train')]
 # 400 was plenty
 num_round = 600
 bst = xgb.train(param, dtrain, num_round, evallist)
-bst.save_model('models/xgb600.model')
+bst.save_model('models/xgb600_drop_noiWAP.model')
 
 # Output array of predictions
-xgbpred = bst.predict(dtest)
+xgbpredLat = bst.predict(dtest)
+errorLat = xgbpredLat - y_test
 
-print('The Latitude MAE is:', abs(xgbpred - y_test).mean())
+trace1 = go.Scatter(
+        x=y_test,
+        y=errorLat,
+        mode='markers'
+)
+
+
+print('The Latitude MAE is:', abs(xgbpredLat - y_test).mean())
 
 # %% Longitude XGB model ------------------------------------------------------
 X = df_full[wap_names]
@@ -164,12 +179,24 @@ dtest = xgb.DMatrix(X_test, label=y_test)
 evallist = [(dtest, 'eval'), (dtrain, 'train')]
 
 # 400 was plenty
-num_round = 500
+num_round = 600
 bst = xgb.train(param, dtrain, num_round, evallist)
-bst.save_model('models/xgbLong500.model')
+bst.save_model('models/xgbLong500_drop_noiWAP.model')
 
-bst.score()
+
 # Output array of predictions
-xgbpred = bst.predict(dtest)
+xgbpredLong = bst.predict(dtest)
+
+
+errorLong = xgbpredLong - y_test
+
+trace2 = go.Scatter(
+        x=y_test,
+        y=errorLong,
+        mode='markers')
+
+plot([trace2])
+
+
 
 print('The Longitude MAE is:', abs(xgbpred - y_test).mean())

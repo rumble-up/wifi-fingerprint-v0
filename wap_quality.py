@@ -60,6 +60,8 @@ df = df.replace(100, np.nan)
 
 wap_names = [col for col in df if col.startswith('WAP')]
 
+
+
 lats = dict()
 longs = dict()
 wap_range = pd.DataFrame(index = wap_names,
@@ -76,7 +78,26 @@ for w in wap_names:
     
 wap_range['lat_diff'] = wap_range.maxLat - wap_range.minLat
 wap_range['long_diff'] = wap_range.maxLon - wap_range.minLon
+wap_range['max_diff'] = wap_range[['lat_diff', 'long_diff']].max(axis=1)
 
 trace1 = go.Histogram(x=wap_range.long_diff)
 trace2 = go.Histogram(x=wap_range.lat_diff)
 plot([trace1, trace2])
+
+wap = wap_range.max_diff
+
+with open('data/wap_max_range.pkl', 'wb') as f:
+    pickle.dump(wap, f)
+
+
+
+df = pd.concat([df_train, df_val, df_test]).reset_index()
+df = df.replace(100, np.nan)
+
+f0 = df[wap_names][df.dataset == 'train'].dropna(axis=1, how='all').columns
+
+# Drop NAs!!!
+
+wap['train_nas'] = df[wap_names][df.dataset == 'train'].isna().sum()
+
+wap['train_null'] = 
