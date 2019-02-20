@@ -167,6 +167,7 @@ num_round = 500
 bst = xgb.train(param, dtrain, num_round, evallist)
 bst.save_model('models/xgbLong500.model')
 
+bst.score()
 # Output array of predictions
 xgbpred = bst.predict(dtest)
 
