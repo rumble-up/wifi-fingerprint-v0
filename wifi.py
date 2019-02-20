@@ -10,6 +10,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from xgboost import XGBClassifier
 from sklearn.ensemble import RandomForestClassifier
 
+from sklearn.preprocessing import scale
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import cohen_kappa_score
 #from sklearn.metrics import confusion_matrix
@@ -246,26 +247,28 @@ fg.map(plt.scatter, 'LATITUDE', 'LONGITUDE').add_legend()
 ### 1- BUILDING - Models on Preprocessed Data
 
 # Remove the target variables from the training set
-y1 = sample_train.pop('BUILDINGID').values
-y2 = sample_train.pop('FLOOR').values
-y3 = sample_train.pop('LATITUDE').values
-y4 = sample_train.pop('LONGITUDE').values
+y1 = training['BUILDINGID'].values
+y2 = training['FLOOR'].values
+y3 = training['LATITUDE'].values
+y4 = training['LONGITUDE'].values
 
 ## Features and targets normalization (scaling)
 
 ## Cross validation
 
 # Creating the objects of the classifiers
-svc1 = LinearSVC(random_state=0, max_iter= 10000, verbose=2)  # verbose=2 to see the progress
+svc1 = LinearSVC(random_state=0, max_iter= 10000, loss= 'hinge', verbose=2)  # verbose=2 to see the progress
 knn1 = KNeighborsClassifier(n_neighbors=3)
 xgb1 = XGBClassifier()
 rf1 = RandomForestClassifier()
 
 ## SVM
 # Train on training data and predict using the testing data
-fit_svc1 = svc1.fit(train_waps, y1)
-pred_svc1 = fit_svc1.predict(val_waps)
-svc1.score(train_waps, y1)
+train_waps_scaled = scale(train_waps)
+fit_svc1 = svc1.fit(train_waps_scaled, y1)
+val_waps_scaled = scale(val_waps)
+pred_svc1 = fit_svc1.predict(val_waps_scaled)
+svc1.score(train_waps_scaled, y1)
 accuracy_score(val_build, pred_svc1)
 
 ## KNN
@@ -274,7 +277,8 @@ fit_knn1 = knn1.fit(train_waps, y1)
 pred_knn1 = fit_knn1.predict(val_waps)
 knn1.score(train_waps, y1)
 accuracy_score(val_build, pred_knn1)
-
+cohen_kappa_score(val_build, pred_knn1)
+        
 ## XGBoost
 # Train on training data and predict using the testing data
 fit_xgb1 = xgb1.fit(train_waps, y1)
@@ -290,7 +294,7 @@ rf1.score(train_waps, y1)
 accuracy_score(val_build, pred_rf1)
 
 # Confusion matrix
-pd.crosstab(val_build, pred_rf1)
+pd.crosstab(val_build, pred_knn1)
 #%%
 ### 2- FLOOR - Models on Preprocessed Data
 
@@ -307,7 +311,8 @@ fit_rf2 = rf1.fit(train_waps, y2)
 pred_rf2 = fit_rf2.predict(val_waps)
 rf1.score(train_waps, y2)
 accuracy_score(val_floor, pred_rf2)
-
+cohen_kappa_score(val_floor, pred_rf2)
+        
 # Confusion matrix
 pd.crosstab(val_floor, pred_rf2)
 #%%
