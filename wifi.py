@@ -98,7 +98,7 @@ validating = pd.concat([val_waps, val_dep], axis=1)
 train_wapsb = training.iloc[:, :313]
 val_wapsb = validating.iloc[:, :313]
 train_wapsblo = training.iloc[:, :314]
-val_wapsblo = training.iloc[:, :314]
+val_wapsblo = validating.iloc[:, :314]
 
 # Objects to be used for prediction performances
 val_build = validating.loc[:, 'BUILDINGID']
@@ -326,7 +326,7 @@ accuracy_score(val_build, pred_rf1)
 cohen_kappa_score(val_build, pred_rf1)
 
 # Confusion matrix
-pd.crosstab(val_build, pred_rf1)
+pd.crosstab(val_build, pred_knn1)
 #%%
 ### 2- FLOOR - Models on Preprocessed Data
 
@@ -350,10 +350,8 @@ pd.crosstab(val_floor, pred_rf2)
 #%%
 ### 3- LONGITUDE - Models on Preprocessed Data
 # Add building predictions to dataframe
-# =============================================================================
-# val_wapsb_pred = val_waps.copy()
-# val_wapsb_pred.loc[:, "BUILDINGID"] = pred_rf1.copy()
-# =============================================================================
+val_wapsb_pred = val_waps.copy()
+val_wapsb_pred.loc[:, "BUILDINGID"] = pred_knn1
 
 ## XGBoost
 # Train on training data and predict using the testing data
@@ -367,21 +365,19 @@ mean_absolute_error(val_long, pred_xgb3)
 
 ## RandomForest
 # Train on training data and predict using the testing data
-fit_rf3 = rfr.fit(train_waps, y3)
+fit_rf3 = rfr.fit(train_wapsb, y3)
 # Saving model with joblib
 dump(fit_rf3, 'rf3.joblib') 
 fit_rf3 = load('rf3.joblib') 
 # Prediction
-pred_rf3 = fit_rf3.predict(val_waps)
+pred_rf3 = fit_rf3.predict(val_wapsb_pred)
 mean_absolute_error(val_long, pred_rf3)
 
 #%%
 ### 4- LATITUDE - Models on Preprocessed Data
 # Add longitude predictions to dataframe
-# =============================================================================
-# val_wapsblo_pred = val_wapsb_pred.copy()
-# val_wapsblo_pred.loc[:, "LONGITUDE"] = pred_rf3.copy()
-# =============================================================================
+val_wapsblo_pred = val_wapsb_pred.copy()
+val_wapsblo_pred.loc[:, "LONGITUDE"] = pred_rf3.copy()
 
 ## XGBoost
 # Train on training data and predict using the testing data
@@ -395,13 +391,20 @@ mean_absolute_error(val_lat, pred_xgb3)
 
 ## RandomForest
 # Train on training data and predict using the testing data
-fit_rf4 = rfr.fit(train_waps, y4)
+fit_rf4 = rfr.fit(train_wapsblo, y4)
 # Saving model with joblib
 dump(fit_rf4, 'rf4.joblib') 
 fit_rf4 = load('rf4.joblib') 
 # Prediction
-pred_rf4 = fit_rf4.predict(val_waps)
+pred_rf4 = fit_rf4.predict(val_wapsblo_pred)
 mean_absolute_error(val_lat, pred_rf4)
 
-
-
+## RandomForest2
+# Train on training data and predict using the testing data
+fit_rf4_2 = rfr.fit(train_wapsb, y4)
+# Saving model with joblib
+dump(fit_rf4_2, 'rf4_2.joblib') 
+fit_rf4_2 = load('rf4_2.joblib') 
+# Prediction
+pred_rf4_2 = fit_rf4_2.predict(val_wapsb_pred)
+mean_absolute_error(val_lat, pred_rf4_2)
