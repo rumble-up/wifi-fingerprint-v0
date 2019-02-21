@@ -9,10 +9,13 @@ from sklearn.svm import LinearSVC
 from sklearn.neighbors import KNeighborsClassifier
 from xgboost import XGBClassifier
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestRegressor
 
 from sklearn.preprocessing import scale
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import cohen_kappa_score
+from sklearn.metrics import mean_absolute_error
+from sklearn.externals.joblib import dump, load
 #from sklearn.metrics import confusion_matrix
 #from sklearn.model_selection import train_test_split
 #from sklearn.preprocessing import LabelBinarizer
@@ -62,22 +65,32 @@ val2 = val2[cols312]
 
 # Sampling for train
 sample_train = train2.groupby(['BUILDINGID','FLOOR']).apply(lambda x: x.sample(n=900)) #.reset_index(drop=True)
+# Drop levels to be able to identify rows ands divide it later
 sample_train.index.names
-
 sample_train = sample_train.droplevel(level= ['FLOOR', 'BUILDINGID']) # clear the additional indexes
 
-# Creating training and test sets
-training = sample_train.append(val2)
+## Creating training and test sets
+# Separating the validation set to two
+val2_1 = val2.sample(frac=0.5, replace= True, random_state=32)
+val2_2 = val2.drop(val2_1.index)  # why does it give 670 instead of 555???????????????
+# Create train set with half validation
+training = sample_train.append(val2_1)
+# Create validation set with rest
 validating = train2.drop(sample_train.index)
-validating = validating.sample(frac=0.3, replace=True, random_state=1) # t was too large
+validating = validating.sample(frac=0.3, replace=True, random_state=33) # t was too large
+validating = validating.append(val2_2)
 
 # Prepare train and val waps objects
 train_waps = training.iloc[:, :312]
 val_waps = validating.iloc[:, :312]
+train_wapsb = training.iloc[:, :313]
+val_wapsb = validating.iloc[:, :313]
 val_build = validating.loc[:, 'BUILDINGID']
 val_floor = validating.loc[:,'FLOOR']
 val_lat = validating.loc[:,'LATITUDE']
 val_long = validating.loc[:,'LONGITUDE']
+train_lat = training.loc[:,'LATITUDE']
+train_long = training.loc[:,'LONGITUDE']
 
 # Reorder columns
 train_dep = training.iloc[:, 312:]
@@ -259,8 +272,9 @@ y4 = training['LONGITUDE'].values
 # Creating the objects of the classifiers
 svc1 = LinearSVC(random_state=0, max_iter= 10000, loss= 'hinge', verbose=2)  # verbose=2 to see the progress
 knn1 = KNeighborsClassifier(n_neighbors=3)
-xgb1 = XGBClassifier()
-rf1 = RandomForestClassifier()
+xgb1 = XGBClassifier(verbose=2)
+rf1 = RandomForestClassifier(verbose=2)
+rfr = RandomForestRegressor(verbose=2)
 
 ## SVM
 # Train on training data and predict using the testing data
@@ -313,6 +327,19 @@ rf1.score(train_waps, y2)
 accuracy_score(val_floor, pred_rf2)
 cohen_kappa_score(val_floor, pred_rf2)
         
+# =============================================================================
+# rfc = RandomForestClassifier(n_jobs=-1,max_features= 'sqrt' ,n_estimators=50, oob_score = True) 
+# 
+# param_grid = { 
+#     'n_estimators': [200, 700],
+#     'max_features': ['auto', 'sqrt', 'log2']
+# }
+# 
+# CV_rfc = GridSearchCV(estimator=rfc, param_grid=param_grid, cv= 5)
+# CV_rfc.fit(X, y)
+# print CV_rfc.best_params_
+# =============================================================================
+
 # Confusion matrix
 pd.crosstab(val_floor, pred_rf2)
 #%%
@@ -320,17 +347,24 @@ pd.crosstab(val_floor, pred_rf2)
 
 ## XGBoost
 # Train on training data and predict using the testing data
-fit_xgb3 = xgb1.fit(train_waps, y3)
+fit_xgb3 = xgb1.fit(train_wapsb, y3)
+# Saving model with joblib
+dump(fit_xgb3, 'models/xgb3.joblib') 
+fit_xgb3 = load('models/xgb3.joblib') 
+# Prediction
+
 pred_xgb3 = fit_xgb3.predict(val_waps)
-xgb1.score(train_waps, y3)
-accuracy_score(val_lat, pred_xgb3)
+mean_absolute_error(val_lat, pred_xgb3)
 
 ## RandomForest
 # Train on training data and predict using the testing data
-fit_rf3 = rf1.fit(train_waps, y3)
+fit_rf3 = rfr.fit(train_waps, y3)
+# Saving model with joblib
+dump(fit_rf3, 'models/rf3.joblib') 
+fit_rf3 = load('models/rf3.joblib') 
+# Prediction
 pred_rf3 = fit_rf3.predict(val_waps)
-rf1.score(train_waps, y3)
-accuracy_score(val_lat, pred_rf3)
+mean_absolute_error(val_lat, pred_rf3)
 
 #%%
 ### 3- LONGITUDE - Models on Preprocessed Data
@@ -338,16 +372,22 @@ accuracy_score(val_lat, pred_rf3)
 ## XGBoost
 # Train on training data and predict using the testing data
 fit_xgb4 = xgb1.fit(train_waps, y4)
+# Saving model with joblib
+dump(fit_xgb4, 'models/xgb4.joblib') 
+fit_xgb4 = load('models/xgb4.joblib') 
+# Prediction
 pred_xgb4 = fit_xgb4.predict(val_waps)
-xgb1.score(train_waps, y4)
-accuracy_score(val_long, pred_xgb4)
+mean_absolute_error(val_long, pred_xgb4)
 
 ## RandomForest
 # Train on training data and predict using the testing data
-fit_rf4 = rf1.fit(train_waps, y4)
+fit_rf4 = rfr.fit(train_waps, y4)
+# Saving model with joblib
+dump(fit_rf4, 'models/rf4.joblib') 
+fit_rf4 = load('models/rf4.joblib') 
+# Prediction
 pred_rf4 = fit_rf4.predict(val_waps)
-rf1.score(train_waps, y4)
-accuracy_score(val_long, pred_rf4)
+mean_absolute_error(val_long, pred_rf4)
 
 #%%
 # Save models to file
