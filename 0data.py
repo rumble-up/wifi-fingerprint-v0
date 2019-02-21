@@ -39,7 +39,7 @@ df_train = pd.read_csv('data/trainingData.csv')
 df_train['dataset'] = 'train'
 # Validation data
 df_val = pd.read_csv('data/validationData.csv')
-df_val['dataset'] = 'validate'
+df_val['dataset'] = 'val'
 
 df_test = pd.read_csv('data/testData.csv')
 df_test['dataset'] = 'test'
@@ -89,4 +89,4 @@ if drop_duplicate_rows: df = df.drop_duplicates()
 
 # Replace Na's with the selected number
 df = df.replace(np.nan, x100)
-#df.to_csv('data/processed/df.csv', index=False)
+df.to_csv('data/processed/df.csv', index=False)

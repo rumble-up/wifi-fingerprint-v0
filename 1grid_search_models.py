@@ -31,20 +31,23 @@ df_all = pd.read_csv('data/processed/df.csv')
 
 wap_names = [col for col in df_all if col.startswith('WAP')]
 
-df = df_all[df_all['dataset'] != 'test']
+df_tr = df_all[df_all['dataset'] == 'train']
+
+df_val = df_all[df_all['dataset'] == 'val']
 
 
-
-#def testTrain(target, X):
-#    ''' target = {'LATITUDE', 'LONGITUDE'}'''
-    
-
+# Build a random sample of val data alone
+test2 = df_val.sample(n = 250, random_state = rand)
+   
 
 # Build a random test sample with 400 observations from each floor, building 
-test = df.groupby(['BUILDINGID', 'FLOOR']).apply(lambda x: x.sample(n = 400, random_state = rand))
+test = df_tr.groupby(['BUILDINGID', 'FLOOR']).apply(lambda x: x.sample(n = 400, random_state = rand))
 test = test.droplevel(level = ['BUILDINGID', 'FLOOR'])
-# Training is all observations not in test sample
-train = df.drop(test.index)
+# Put both random samples into the main test set
+test = pd.concat([test, test2])
+
+# Training is all observations not in random test sample or provided test set
+train = df_all[df_all['dataset'] != 'test'].drop(test.index)
 
 
 ### CHANGE TO FUNCTION #########################################################
