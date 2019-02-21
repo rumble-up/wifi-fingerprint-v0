@@ -42,6 +42,7 @@ test2 = df_val.sample(n = 250, random_state = rand)
 
 # Build a random test sample with 400 observations from each floor, building 
 test = df_tr.groupby(['BUILDINGID', 'FLOOR']).apply(lambda x: x.sample(n = 400, random_state = rand))
+# Reduce multi-index to single level index
 test = test.droplevel(level = ['BUILDINGID', 'FLOOR'])
 # Put both random samples into the main test set
 test = pd.concat([test, test2])
@@ -52,12 +53,12 @@ train = df_all[df_all['dataset'] != 'test'].drop(test.index)
 
 ### CHANGE TO FUNCTION #########################################################
 target = 'LATITUDE'
+
+y_train = train[target]
     
-y = df[target]  
+X_train = train[wap_names]
 
-
-X = df[wap_names]
-
+# https://jessesw.com/XG-Boost/
 
 cv_params = {'max_depth': [3,5]} #,7], 'min_child_weight': [1,3,5]}
 ind_params = {'learning_rate': 0.1, 'n_estimators': 600, 'seed': rand, 
@@ -68,17 +69,4 @@ optimized_GBM = GridSearchCV(xgb.XGBClassifier(**ind_params), cv_params,
                          cv = 5, n_jobs = 2) 
     
 
-
-X_trainLAT, X_testLAT, y_trainLAT, y_testLAT = testTrain('LATITUDE', X)
-X_trainLON, X_testLON, y_trainLON, y_testLON = testTrain('LONGITUDE', X)
-
-
-cv_params = {'max_depth': [3,5]} #,7], 'min_child_weight': [1,3,5]}
-ind_params = {'learning_rate': 0.1, 'n_estimators': 600, 'seed': rand, 
-              'subsample': 0.8, 'colsample_bytree': 0.8, 
-             'objective': 'reg:linear'}
-optimized_GBM = GridSearchCV(xgb.XGBClassifier(**ind_params), cv_params, 
-                             scoring = 'neg_mean_absolute_error', 
-                             cv = 5, n_jobs = 2) 
-
-lat1 = optimized_GBM.fit(X_trainLAT)
+lat1 = optimized_GBM.fit(X_train, y_train)
