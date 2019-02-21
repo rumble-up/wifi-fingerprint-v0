@@ -10,6 +10,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from xgboost import XGBClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import GridSearchCV
 
 from sklearn.preprocessing import scale
 from sklearn.metrics import accuracy_score
@@ -80,24 +81,33 @@ validating = train2.drop(sample_train.index)
 validating = validating.sample(frac=0.3, replace=True, random_state=33) # t was too large
 validating = validating.append(val2_2)
 
-# Prepare train and val waps objects
 train_waps = training.iloc[:, :312]
 val_waps = validating.iloc[:, :312]
+
+# Reorder columns
+train_dep = training.iloc[:, 312:]
+val_dep = validating.iloc[:, 312:]
+cols = train_dep.columns.tolist()
+cols = [cols[3]] + cols [0:3] + cols[4:]
+train_dep = train_dep[cols]
+val_dep = val_dep[cols]
+training = pd.concat([train_waps, train_dep], axis=1)
+validating = pd.concat([val_waps, val_dep], axis=1)
+
+# Prepare train and val waps objects
 train_wapsb = training.iloc[:, :313]
 val_wapsb = validating.iloc[:, :313]
+train_wapsblo = training.iloc[:, :314]
+val_wapsblo = training.iloc[:, :314]
+
+# Objects to be used for prediction performances
 val_build = validating.loc[:, 'BUILDINGID']
 val_floor = validating.loc[:,'FLOOR']
 val_lat = validating.loc[:,'LATITUDE']
 val_long = validating.loc[:,'LONGITUDE']
+
 train_lat = training.loc[:,'LATITUDE']
 train_long = training.loc[:,'LONGITUDE']
-
-# Reorder columns
-train_dep = training.iloc[:, 312:]
-cols = train_dep.columns.tolist()
-cols = [cols[3]] + [cols [2]] + cols [0:2] + cols[4:]
-train_dep = train_dep[cols]
-training = pd.concat([train_waps, train_dep], axis=1)
 
 # Removing values stronger than -30
 
@@ -260,21 +270,28 @@ fg.map(plt.scatter, 'LATITUDE', 'LONGITUDE').add_legend()
 ### 1- BUILDING - Models on Preprocessed Data
 
 # Remove the target variables from the training set
-y1 = training['BUILDINGID'].values
-y2 = training['FLOOR'].values
-y3 = training['LATITUDE'].values
-y4 = training['LONGITUDE'].values
+y1 = training['BUILDINGID']
+y2 = training['FLOOR']
+y3 = training['LONGITUDE']
+y4 = training['LATITUDE']
 
 ## Features and targets normalization (scaling)
-
-## Cross validation
 
 # Creating the objects of the classifiers
 svc1 = LinearSVC(random_state=0, max_iter= 10000, loss= 'hinge', verbose=2)  # verbose=2 to see the progress
 knn1 = KNeighborsClassifier(n_neighbors=3)
 xgb1 = XGBClassifier(verbose=2)
-rf1 = RandomForestClassifier(verbose=2)
-rfr = RandomForestRegressor(verbose=2)
+rf1 = RandomForestClassifier(max_features= 'sqrt' ,n_estimators=100, verbose=2)
+rfr = RandomForestRegressor(n_estimators=200, verbose=2)
+
+## Cross validation RFC
+rfcv = RandomForestClassifier(n_jobs=-1,max_features= 'sqrt' ,n_estimators=50, oob_score = True, verbose=2) 
+param_grid = { 
+    'n_estimators': [100, 250],
+    'max_features': ['auto', 'sqrt', 'log2']
+}
+CV_rfcv = GridSearchCV(estimator=rfcv, param_grid=param_grid, cv=5)
+
 
 ## SVM
 # Train on training data and predict using the testing data
@@ -292,7 +309,7 @@ pred_knn1 = fit_knn1.predict(val_waps)
 knn1.score(train_waps, y1)
 accuracy_score(val_build, pred_knn1)
 cohen_kappa_score(val_build, pred_knn1)
-        
+      
 ## XGBoost
 # Train on training data and predict using the testing data
 fit_xgb1 = xgb1.fit(train_waps, y1)
@@ -306,9 +323,10 @@ fit_rf1 = rf1.fit(train_waps, y1)
 pred_rf1 = fit_rf1.predict(val_waps)
 rf1.score(train_waps, y1)
 accuracy_score(val_build, pred_rf1)
+cohen_kappa_score(val_build, pred_rf1)
 
 # Confusion matrix
-pd.crosstab(val_build, pred_knn1)
+pd.crosstab(val_build, pred_rf1)
 #%%
 ### 2- FLOOR - Models on Preprocessed Data
 
@@ -326,73 +344,64 @@ pred_rf2 = fit_rf2.predict(val_waps)
 rf1.score(train_waps, y2)
 accuracy_score(val_floor, pred_rf2)
 cohen_kappa_score(val_floor, pred_rf2)
-        
-# =============================================================================
-# rfc = RandomForestClassifier(n_jobs=-1,max_features= 'sqrt' ,n_estimators=50, oob_score = True) 
-# 
-# param_grid = { 
-#     'n_estimators': [200, 700],
-#     'max_features': ['auto', 'sqrt', 'log2']
-# }
-# 
-# CV_rfc = GridSearchCV(estimator=rfc, param_grid=param_grid, cv= 5)
-# CV_rfc.fit(X, y)
-# print CV_rfc.best_params_
-# =============================================================================
 
 # Confusion matrix
 pd.crosstab(val_floor, pred_rf2)
 #%%
-### 3- LATITUDE - Models on Preprocessed Data
+### 3- LONGITUDE - Models on Preprocessed Data
+# Add building predictions to dataframe
+# =============================================================================
+# val_wapsb_pred = val_waps.copy()
+# val_wapsb_pred.loc[:, "BUILDINGID"] = pred_rf1.copy()
+# =============================================================================
 
 ## XGBoost
 # Train on training data and predict using the testing data
 fit_xgb3 = xgb1.fit(train_wapsb, y3)
 # Saving model with joblib
-dump(fit_xgb3, 'models/xgb3.joblib') 
-fit_xgb3 = load('models/xgb3.joblib') 
+dump(fit_xgb3, 'xgb3.joblib') 
+fit_xgb3 = load('xgb3.joblib') 
 # Prediction
-
 pred_xgb3 = fit_xgb3.predict(val_waps)
-mean_absolute_error(val_lat, pred_xgb3)
+mean_absolute_error(val_long, pred_xgb3)
 
 ## RandomForest
 # Train on training data and predict using the testing data
 fit_rf3 = rfr.fit(train_waps, y3)
 # Saving model with joblib
-dump(fit_rf3, 'models/rf3.joblib') 
-fit_rf3 = load('models/rf3.joblib') 
+dump(fit_rf3, 'rf3.joblib') 
+fit_rf3 = load('rf3.joblib') 
 # Prediction
 pred_rf3 = fit_rf3.predict(val_waps)
-mean_absolute_error(val_lat, pred_rf3)
+mean_absolute_error(val_long, pred_rf3)
 
 #%%
-### 3- LONGITUDE - Models on Preprocessed Data
+### 4- LATITUDE - Models on Preprocessed Data
+# Add longitude predictions to dataframe
+# =============================================================================
+# val_wapsblo_pred = val_wapsb_pred.copy()
+# val_wapsblo_pred.loc[:, "LONGITUDE"] = pred_rf3.copy()
+# =============================================================================
 
 ## XGBoost
 # Train on training data and predict using the testing data
-fit_xgb4 = xgb1.fit(train_waps, y4)
+fit_xgb4 = xgb1.fit(train_wapsblo, y4)
 # Saving model with joblib
-dump(fit_xgb4, 'models/xgb4.joblib') 
-fit_xgb4 = load('models/xgb4.joblib') 
+dump(fit_xgb4, 'xgb4.joblib') 
+fit_xgb4 = load('xgb4.joblib') 
 # Prediction
-pred_xgb4 = fit_xgb4.predict(val_waps)
-mean_absolute_error(val_long, pred_xgb4)
+pred_xgb3 = fit_xgb3.predict(val_waps)
+mean_absolute_error(val_lat, pred_xgb3)
 
 ## RandomForest
 # Train on training data and predict using the testing data
 fit_rf4 = rfr.fit(train_waps, y4)
 # Saving model with joblib
-dump(fit_rf4, 'models/rf4.joblib') 
-fit_rf4 = load('models/rf4.joblib') 
+dump(fit_rf4, 'rf4.joblib') 
+fit_rf4 = load('rf4.joblib') 
 # Prediction
 pred_rf4 = fit_rf4.predict(val_waps)
-mean_absolute_error(val_long, pred_rf4)
+mean_absolute_error(val_lat, pred_rf4)
 
-#%%
-# Save models to file
-# models = dict(fit_svc1 = fit_svc1, fit_knn1 = fit_knn1, fit_xgb1)
-# 
-# with open('data/wap_buildings.pkl', 'wb') as f:
-#     pickle.dump(wap_building, f)
+
 
