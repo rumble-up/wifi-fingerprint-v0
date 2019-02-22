@@ -1,19 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Feb 22 12:55:39 2019
-
-@author: chief
-"""
-
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
 
 Status: IN PROGRESS
-Purpose: Use raw signals to make model prediction
+Purpose: Use saved models to make final prediction
 
-Created on Feb 22 2019
+Created on Fri Feb 22 12:55:39 2019
 @author: Laura Stupin
 
 """

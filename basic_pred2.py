@@ -43,7 +43,7 @@ wap_names = [col for col in df_all if col.startswith('WAP')]
 df_tr = df_all[df_all['dataset'] == 'train']
 
 df_val = df_all[df_all['dataset'] == 'val']
-df_final = df_all[df_all['dataset'] == 'test']
+df_test = df_all[df_all['dataset'] == 'test']
 
 # Build a random sample of val data alone
 test2 = df_val.sample(n = 250, random_state = rand)
@@ -61,8 +61,11 @@ train = df_all[df_all['dataset'] != 'test'].drop(test.index)
 
 
 # %% Final data for prediction
+df_full = df_all[df_all['dataset'] != 'test']
+X_train_final = df_full[wap_names]
 
-X_final = df_final[wap_names]
+X_pred_final = df_test[wap_names]
+
 
 # %% Floor Random Forest Model --------------------------------------------
 # Test/train data
@@ -81,15 +84,20 @@ X_test2 = test2[wap_names]
 # %% Floor Random Forest Model --------------------------------------------
 # Model training and prediction
 
-clf80 = RandomForestClassifier(n_estimators = 80, n_jobs =2, random_state=rand)
-clf80 = clf80.fit(X_train, y_train)
+rfc80 = RandomForestClassifier(n_estimators = 80, n_jobs =2, random_state=rand)
+rfc80 = rfc80.fit(X_train, y_train)
 
-rfcPred(X_test, y_test, clf80)
+rfcPred(X_test, y_test, rfc80)
 # Try the harder test set
-rfcPred(X_test2, y_test2, clf80)
+rfcPred(X_test2, y_test2, rfc80)
+
+# Train model on full dataset and save for final prediction
+rfc80full = RandomForestClassifier(n_estimators = 80, n_jobs =2, random_state=rand)
+rfc80full = rfc80full.fit(X_train, y_train)
 
 #Save model for use later in final prediction
 #joblib.dump(clf80, 'models/clf80.sav')
+joblib.dump()
 
 
 # %% Latitude XGB Model --------------------------------------------
