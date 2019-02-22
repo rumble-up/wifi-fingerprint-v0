@@ -71,7 +71,6 @@ X_train_final = df_full[wap_names]
 
 X_pred_final = df_test[wap_names]
 
-
 # %% Floor Random Forest Model --------------------------------------------
 # Test/train data
 target = 'FLOOR'
@@ -107,9 +106,7 @@ rfc80final = rfc80final.fit(X_train_final, y_train_final)
 joblib.dump(rfc80, 'models/rfc80train.sav')
 joblib.dump(rfc80final, 'models/rfc80final.sav')
 
-floor_pred = rfc80final.predict(X_pred_final)
-
-
+df_pred['FLOOR'] = rfc80final.predict(X_pred_final)
 
 
 # %% Latitude XGB Model --------------------------------------------
