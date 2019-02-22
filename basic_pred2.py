@@ -23,7 +23,7 @@ chdir(wd)
 import pandas as pd
 import xgboost as xgb
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import cohen_kappa_score
+from sklearn.metrics import cohen_kappa_score, mean_absolute_error
 from sklearn.externals import joblib
 
 # %% Custom functions ----------------------------------------------------------------
@@ -110,28 +110,57 @@ df_pred['FLOOR'] = rfc80final.predict(X_pred_final)
 
 
 # %% Latitude XGB Model --------------------------------------------
-X = df_full[wap_names]
-y = df_full['LATITUDE']
+# Test/train data ------------------------------------------------------------
 
-X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size = 0.25, random_state = rand)
+target = 'LATITUDE'
 
+y_train = train[target]   
+X_train = train[wap_names]
 
-param = {'max_depth':6, 'objective':'reg:linear'}
+y_test = test[target]
+X_test = test[wap_names]
 
+# A more difficult test
+y_test2 = test2[target]
+X_test2 = test2[wap_names]
 
-dtrain = xgb.DMatrix(X_train, label=y_train)
-dtest = xgb.DMatrix(X_test, label=y_test)
+y_train_final = df_full[target]
 
-evallist = [(dtest, 'eval'), (dtrain, 'train')]
+# %% Latitude XGB Model --------------------------------------------
+# Train/fit model with normal test data ------------------------------------------------------------
 
 # 400 was plenty
-num_round = 600
-bst = xgb.train(param, dtrain, num_round, evallist)
-bst.save_model('models/xgb600_drop_noiWAP.model')
+num_round = 300
+param = {'objective':'reg:linear',
+         'max_depth':7, 
+         'learning_rate': 0.24,
+         'n_estimators':100,
+         'early_stopping_rounds':10}
+
+# Define function to try out different test/train splits
+def xgb_fit(X_train, y_train, X_test, y_test, param):
+    dtrain = xgb.DMatrix(X_train, label=y_train)
+    dtest = xgb.DMatrix(X_test, label=y_test)
+    evallist = [(dtest, 'eval'), (dtrain, 'train')]
+    
+    bst = xgb.train(param, dtrain, num_round, evallist)
+    
+    xgbpred = bst.predict(dtest)
+    print('MAE:', mean_absolute_error(xgbpred, y_test))
+      
+
+    return(bst)
+    
+# Tougher test set
+bst = xgb_fit(X_train, y_train, X_test2, y_test2, param)    
+
+bst = xgb_fit(X_train, y_train, X_test, y_test, param)
 
 # Output array of predictions
-xgbpredLat = bst.predict(dtest)
+
+
+bst.save_model('models/lat_xgb_best.model')
+
 errorLat = xgbpredLat - y_test
 
 trace1 = go.Scatter(
@@ -142,6 +171,42 @@ trace1 = go.Scatter(
 
 
 print('The Latitude MAE is:', abs(xgbpredLat - y_test).mean())
+
+# %% Latitude XGB Model --------------------------------------------
+# Tough test data: Train/fit model ------------------------------------------------------------
+
+# 400 was plenty
+num_round = 400
+param = {'objective':'reg:linear',
+         'max_depth':10, 
+         'learning_rate': 0.3,
+         'n_estimators':50,
+         'early_stopping_rounds':10}
+dtrain = xgb.DMatrix(X_train, label=y_train)
+dtest = xgb.DMatrix(X_test, label=y_test)
+evallist = [(dtest, 'eval'), (dtrain, 'train')]
+
+
+bst = xgb.train(param, dtrain, num_round, evallist)
+
+
+# Output array of predictions
+xgbpredLat = bst.predict(dtest)
+mean_absolute_error(xgbpredLat, y_test)
+
+bst.save_model('models/lat_xgb.model')
+
+errorLat = xgbpredLat - y_test
+
+trace1 = go.Scatter(
+        x=y_test,
+        y=errorLat,
+        mode='markers'
+)
+
+
+print('The Latitude MAE is:', abs(xgbpredLat - y_test).mean())
+
 
 # %% Longitude XGB model ------------------------------------------------------
 X = df_full[wap_names]
