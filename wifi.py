@@ -41,7 +41,7 @@ os.getcwd()
 os.chdir('/Users/denizminican/Dropbox/03-Data_and_Coding/Ubiqum/Repositories/wifi-fingerprint')
 
 #%%
-## Create the df
+## Load training set
 train = pd.read_csv('data/trainingData.csv')
 # Load validation set
 val = pd.read_csv('data/validationData.csv')
@@ -164,7 +164,7 @@ plt.figure()
 train_phone = train.drop(['LATITUDE', 'LONGITUDE', 'USERID', 'FLOOR', 'BUILDINGID', 'SPACEID',
                           'RELATIVEPOSITION', 'TIMESTAMP'], axis = 1)
 melted_phone = pd.melt(train_phone, id_vars=['PHONEID'], var_name='WAP')
-melted_phone = melted_phone[melted_phone['value'] != 100]
+melted_phone = melted_phone[melted_phone['value'] != -110]
 melted_phone.boxplot(by = "PHONEID", column = "value")
 
 #%%
@@ -265,7 +265,7 @@ fg.map(plt.scatter, 'LATITUDE', 'LONGITUDE').add_legend()
 # =============================================================================
 
 #%%
-#### MODELING
+#### MODELING ####
 
 ### 1- BUILDING - Models on Preprocessed Data
 
@@ -338,6 +338,8 @@ cohen_kappa_score(val_build, pred_rf1)
 # Confusion matrix
 pd.crosstab(val_build, pred_knn1)
 #%%
+#### MODELING ####
+
 ### 2- FLOOR - Models on Preprocessed Data
 
 ## XGBoost
@@ -358,6 +360,8 @@ cohen_kappa_score(val_floor, pred_rf2)
 # Confusion matrix
 pd.crosstab(val_floor, pred_rf2)
 #%%
+#### MODELING ####
+
 ### 3- LONGITUDE - Models on Preprocessed Data
 # Add building predictions to dataframe
 val_wapsb_pred = val_waps.copy()
@@ -371,7 +375,6 @@ if xgb3_file.is_file():
 else:
     fit_xgb3 = xgb1.fit(train_wapsb, y3)
     dump(fit_xgb3, 'xgb3.joblib')
-
 # Prediction
 pred_xgb3 = fit_xgb3.predict(val_wapsb_pred)
 mean_absolute_error(val_long, pred_xgb3)
@@ -389,6 +392,8 @@ pred_rf3 = fit_rf3.predict(val_wapsb_pred)
 mean_absolute_error(val_long, pred_rf3)
 
 #%%
+#### MODELING ####
+
 ### 4- LATITUDE - Models on Preprocessed Data
 # Add longitude predictions to dataframe
 val_wapsblo_pred = val_wapsb_pred.copy()
@@ -441,3 +446,87 @@ else:
 # Prediction
 pred_rf4_2 = fit_rf4_2.predict(val_wapsb_pred)
 mean_absolute_error(val_lat, pred_rf4_2)
+
+#%%
+#### TEST DATA STUFF ####
+
+# Load test set
+test = pd.read_csv('data/testData.csv')
+
+## Finding common APs
+aps_train = train.iloc[:, :520]
+aps_val = val.iloc[:, :520]
+aps_test = test.iloc[:, :520]
+aps_train2 = train.loc[:, train.apply(pd.Series.nunique) != 1]
+aps_val2 = val.loc[:, val.apply(pd.Series.nunique) != 1]
+aps_test2 = test.loc[:, test.apply(pd.Series.nunique) != 1]
+
+aps_tetr = np.intersect1d(aps_test.columns, aps_train.columns)
+aps_teva = np.intersect1d(aps_test.columns, aps_val.columns)
+
+#%%
+#### TEST SET PREDICTIONS ####
+
+## 111111111111111111111111111111111111111111111111111111111111111111111111111111111111 ##
+cols_waps = train_waps.columns.tolist()
+aps_test = aps_test[cols_waps]
+aps_test = aps_test.replace(100, -110)
+
+## Building prediction
+pred_1_b = fit_knn1.predict(aps_test)
+# Prediction results
+unique1b, counts1b = np.unique(pred_1_b, return_counts=True)
+dict(zip(unique1b, counts1b))
+
+## Floor prediction
+pred_1_f = fit_rf2.predict(aps_test)
+# Prediction results
+unique1f, counts1f = np.unique(pred_1_f, return_counts=True)
+dict(zip(unique1f, counts1f))
+
+## Longitude prediction
+aps_test_pred = aps_test.copy()
+aps_test_pred.loc[:, "BUILDINGID"] = pred_1_b
+pred_1_lo = fit_xgb3.predict(aps_test_pred)
+
+## Latitude prediction
+pred_1_la = fit_rf4_2.predict(aps_test_pred)
+
+## 222222222222222222222222222222222222222222222222222222222222222222222222222222222222 ##
+pred_2_b = fit_rf1.predict(aps_test)
+pred_2_f = fit_rf2.predict(aps_test)
+
+aps_test_pred = aps_test.copy()
+aps_test_pred.loc[:, "BUILDINGID"] = pred_1_b
+
+pred_xgb3 = fit_xgb3.predict(val_wapsb_pred)
+
+val_wapsblo_pred = val_wapsb_pred.copy()
+val_wapsblo_pred.loc[:, "LONGITUDE"] = pred_rf3.copy()
+
+pred_rf4 = fit_rf4.predict(val_wapsblo_pred)
+
+## 333333333333333333333333333333333333333333333333333333333333333333333333333333333333 ##
+
+## 444444444444444444444444444444444444444444444444444444444444444444444444444444444444 ##
+
+
+#%%
+### PCA
+# =============================================================================
+# scaler=StandardScaler()  # instantiate
+# scaler.fit()  # compute the mean and standard which will be used in the next command
+# X_scaled=scaler.transform(cancer.data)# fit and transform can be applied together and I leave that for simple exercise
+# # we can check the minimum and maximum of the scaled features which we expect to be 0 and 1
+# print "after scaling minimum", X_scaled.min(axis=0)
+# 
+# pca=PCA(n_components=3) 
+# pca.fit(X_scaled) 
+# X_pca=pca.transform(X_scaled) 
+# #let's check the shape of X_pca array
+# print "shape of X_pca", X_pca.shape
+# 
+# ex_variance=np.var(X_pca,axis=0)
+# ex_variance_ratio = ex_variance/np.sum(ex_variance)
+# print ex_variance_ratio 
+# =============================================================================
