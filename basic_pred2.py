@@ -26,28 +26,33 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import cohen_kappa_score
 from sklearn.externals import joblib
 
-# %% Functions ----------------------------------------------------------------
+# %% Custom functions ----------------------------------------------------------------
 
+# Calculate and display error metrics for Random Forest Classification
 def rfcPred(X_test, y_test, model):
     clfpred = model.predict(X_test)
     print(pd.crosstab(y_test, clfpred, rownames=['Actual'], colnames=['Predicted']))
     print('Accuracy:', model.score(X_test, y_test))
     print('Kappa:', cohen_kappa_score(clfpred, y_test))
 
-# %% Prepare test/train -------------------------------------------------------
+# %% Load data -------------------------------------------------------
 
 df_all = pd.read_csv('data/processed/df.csv')
-
-wap_names = [col for col in df_all if col.startswith('WAP')]
-
 df_tr = df_all[df_all['dataset'] == 'train']
-
 df_val = df_all[df_all['dataset'] == 'val']
 df_test = df_all[df_all['dataset'] == 'test']
 
+wap_names = [col for col in df_all if col.startswith('WAP')]
+
+# Empty dataframe to hold predictions
+df_pred = pd.DataFrame(
+        index = range(0,len(df_test)),
+        columns = ['FLOOR', 'LATITUDE', 'LONGITUDE'])
+
+# %% Prepare test/train -------------------------------------------------------
+
 # Build a random sample of val data alone
 test2 = df_val.sample(n = 250, random_state = rand)
-
 
 # Build a random test sample with 400 observations from each floor, building 
 test = df_tr.groupby(['BUILDINGID', 'FLOOR']).apply(lambda x: x.sample(n = 400, random_state = rand))
@@ -81,23 +86,30 @@ X_test = test[wap_names]
 y_test2 = test2[target]
 X_test2 = test2[wap_names]
 
+y_train_final = df_full[target]
+
 # %% Floor Random Forest Model --------------------------------------------
 # Model training and prediction
 
 rfc80 = RandomForestClassifier(n_estimators = 80, n_jobs =2, random_state=rand)
 rfc80 = rfc80.fit(X_train, y_train)
 
+# Look at error metrics
 rfcPred(X_test, y_test, rfc80)
 # Try the harder test set
 rfcPred(X_test2, y_test2, rfc80)
 
 # Train model on full dataset and save for final prediction
-rfc80full = RandomForestClassifier(n_estimators = 80, n_jobs =2, random_state=rand)
-rfc80full = rfc80full.fit(X_train, y_train)
+rfc80final = RandomForestClassifier(n_estimators = 80, n_jobs =2, random_state=rand)
+rfc80final = rfc80final.fit(X_train_final, y_train_final)
 
-#Save model for use later in final prediction
-#joblib.dump(clf80, 'models/clf80.sav')
-joblib.dump()
+#Save model for reference
+joblib.dump(rfc80, 'models/rfc80train.sav')
+joblib.dump(rfc80final, 'models/rfc80final.sav')
+
+floor_pred = rfc80final.predict(X_pred_final)
+
+
 
 
 # %% Latitude XGB Model --------------------------------------------
