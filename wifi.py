@@ -492,6 +492,19 @@ pred_1_lo = fit_xgb3.predict(aps_test_pred)
 ## Latitude prediction
 pred_1_la = fit_rf4_2.predict(aps_test_pred)
 
+# Long-Lat visualization
+lo1 = pd.DataFrame(pred_1_lo)
+la1 = pd.DataFrame(pred_1_la)
+pred_lola = lo1.join(la1, lsuffix='LONGITUDE', rsuffix='LATITUDE')
+f1 = pd.DataFrame(pred_1_f)
+pred_lola = pred_lola.join(f1, rsuffix='FLOOR')
+
+plot3d = plt.figure().gca(projection='3d')
+plot3d.scatter(xs=pred_lola['0LONGITUDE'], ys=pred_lola['0LATITUDE'], zs=f1)
+plot3d.set_zlabel('Floor')
+plt.show()
+plt.figure()
+
 ## 222222222222222222222222222222222222222222222222222222222222222222222222222222222222 ##
 pred_2_b = fit_rf1.predict(aps_test)
 pred_2_f = fit_rf2.predict(aps_test)
