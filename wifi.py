@@ -32,7 +32,7 @@ import seaborn
 
 import os
 import csv 
-
+from pathlib import Path
 
 import pickle
 #%%
@@ -274,15 +274,16 @@ y1 = training['BUILDINGID']
 y2 = training['FLOOR']
 y3 = training['LONGITUDE']
 y4 = training['LATITUDE']
+yy = pd.concat([y3, y4], axis=1)
 
 ## Features and targets normalization (scaling)
 
 # Creating the objects of the classifiers
 svc1 = LinearSVC(random_state=0, max_iter= 10000, loss= 'hinge', verbose=2)  # verbose=2 to see the progress
 knn1 = KNeighborsClassifier(n_neighbors=3)
-xgb1 = XGBClassifier(verbose=2)
+xgb1 = XGBClassifier(n_jobs=-1, verbose=2)
 rf1 = RandomForestClassifier(max_features= 'sqrt' ,n_estimators=100, verbose=2)
-rfr = RandomForestRegressor(n_estimators=200, verbose=2)
+rfr = RandomForestRegressor(n_estimators=200, n_jobs=2, verbose=2)
 
 ## Cross validation RFC
 rfcv = RandomForestClassifier(n_jobs=-1,max_features= 'sqrt' ,n_estimators=50, oob_score = True, verbose=2) 
@@ -292,6 +293,15 @@ param_grid = {
 }
 CV_rfcv = GridSearchCV(estimator=rfcv, param_grid=param_grid, cv=5)
 
+# =============================================================================
+# ## Cross validation RFC
+# rfcv = RandomForestClassifier(n_jobs=-1,max_features= 'sqrt' ,n_estimators=50, oob_score = True, verbose=2) 
+# param_grid = { 
+#     'n_estimators': [100, 250],
+#     'max_features': ['auto', 'sqrt', 'log2']
+# }
+# CV_rfcv = GridSearchCV(estimator=rfcv, param_grid=param_grid, cv=5)
+# =============================================================================
 
 ## SVM
 # Train on training data and predict using the testing data
@@ -354,21 +364,26 @@ val_wapsb_pred = val_waps.copy()
 val_wapsb_pred.loc[:, "BUILDINGID"] = pred_knn1
 
 ## XGBoost
-# Train on training data and predict using the testing data
-fit_xgb3 = xgb1.fit(train_wapsb, y3)
-# Saving model with joblib
-dump(fit_xgb3, 'xgb3.joblib') 
-fit_xgb3 = load('xgb3.joblib') 
+xgb3_file = Path("xgb3.joblib")
+if xgb3_file.is_file():
+    print ("XGB3 here.")
+    fit_xgb3 = load('xgb3.joblib')
+else:
+    fit_xgb3 = xgb1.fit(train_wapsb, y3)
+    dump(fit_xgb3, 'xgb3.joblib')
+
 # Prediction
-pred_xgb3 = fit_xgb3.predict(val_waps)
+pred_xgb3 = fit_xgb3.predict(val_wapsb_pred)
 mean_absolute_error(val_long, pred_xgb3)
 
 ## RandomForest
-# Train on training data and predict using the testing data
-fit_rf3 = rfr.fit(train_wapsb, y3)
-# Saving model with joblib
-dump(fit_rf3, 'rf3.joblib') 
-fit_rf3 = load('rf3.joblib') 
+rf3_file = Path("rf3.joblib")
+if rf3_file.is_file():
+    print ("RF3 here.")
+    fit_rf3 = load('rf3.joblib')  
+else:
+    fit_rf3 = rfr.fit(train_wapsb, y3)
+    dump(fit_rf3, 'rf3.joblib') 
 # Prediction
 pred_rf3 = fit_rf3.predict(val_wapsb_pred)
 mean_absolute_error(val_long, pred_rf3)
@@ -380,31 +395,49 @@ val_wapsblo_pred = val_wapsb_pred.copy()
 val_wapsblo_pred.loc[:, "LONGITUDE"] = pred_rf3.copy()
 
 ## XGBoost
-# Train on training data and predict using the testing data
-fit_xgb4 = xgb1.fit(train_wapsblo, y4)
-# Saving model with joblib
-dump(fit_xgb4, 'xgb4.joblib') 
-fit_xgb4 = load('xgb4.joblib') 
+xgb4_file = Path("xgb4.joblib")
+if xgb4_file.is_file():
+    print ("I'm here.")
+    fit_xgb4 = load('xgb4.joblib')
+else:
+    fit_xgb4 = xgb1.fit(train_wapsblo, y4)
+    dump(fit_xgb4, 'xgb4.joblib')
 # Prediction
-pred_xgb3 = fit_xgb3.predict(val_waps)
-mean_absolute_error(val_lat, pred_xgb3)
+pred_xgb4 = fit_xgb4.predict(val_wapsblo_pred)
+mean_absolute_error(val_lat, pred_xgb4)
+
+## XGBoost
+xgb4_2_file = Path("xgb4_2.joblib")
+if xgb4_2_file.is_file():
+    print ("XGB4-2 here.")
+    fit_xgb4_2 = load('xgb4_2.joblib') 
+else:
+    fit_xgb4_2 = xgb1.fit(train_wapsb, y4)
+    dump(fit_xgb4_2, 'xgb4_2.joblib') 
+# Prediction
+pred_xgb4_2 = fit_xgb4_2.predict(val_wapsb_pred)
+mean_absolute_error(val_lat, pred_xgb4_2)
 
 ## RandomForest
-# Train on training data and predict using the testing data
-fit_rf4 = rfr.fit(train_wapsblo, y4)
-# Saving model with joblib
-dump(fit_rf4, 'rf4.joblib') 
-fit_rf4 = load('rf4.joblib') 
+rf4_file = Path("rf4.joblib")
+if rf4_file.is_file():
+    print ("RF4 here.")
+    fit_rf4 = load('rf4.joblib') 
+else:
+    fit_rf4 = rfr.fit(train_wapsblo, y4)
+    dump(fit_rf4, 'rf4.joblib')  
 # Prediction
 pred_rf4 = fit_rf4.predict(val_wapsblo_pred)
 mean_absolute_error(val_lat, pred_rf4)
 
 ## RandomForest2
-# Train on training data and predict using the testing data
-fit_rf4_2 = rfr.fit(train_wapsb, y4)
-# Saving model with joblib
-dump(fit_rf4_2, 'rf4_2.joblib') 
-fit_rf4_2 = load('rf4_2.joblib') 
+rf4_2_file = Path("rf4_2.joblib")
+if rf4_2_file.is_file():
+    print ("RF4-2 here.")
+    fit_rf4_2 = load('rf4_2.joblib') 
+else:
+    fit_rf4_2 = rfr.fit(train_wapsb, y4)
+    dump(fit_rf4_2, 'rf4_2.joblib') 
 # Prediction
 pred_rf4_2 = fit_rf4_2.predict(val_wapsb_pred)
 mean_absolute_error(val_lat, pred_rf4_2)
