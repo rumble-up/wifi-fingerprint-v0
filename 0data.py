@@ -31,6 +31,7 @@ chdir(wd)
 
 import pandas as pd
 import numpy as np
+import pickle
 
 #%% Load data -----------------------------------------------------------------
 
@@ -67,13 +68,13 @@ df = pd.concat([df_train, df_val, df_test]).reset_index()
 df = df.rename(columns ={'index': 'orig_index'})
 
 # Load an object in     
-#with open('data/wap_max_range.pkl', 'rb') as f:
-#    wap_max_range = pickle.load(f)
-#    
-#noisy_waps = wap_max_range[wap_max_range > 190].index.to_list()
+with open('data/wap_max_range.pkl', 'rb') as f:
+    wap_max_range = pickle.load(f)
+    
+noisy_waps = wap_max_range[wap_max_range > 190].index.to_list()
 
 # Drop null WAPs
-null_waps = nulls['test'] #+ noisy_waps
+null_waps = nulls['test'] + noisy_waps
 if drop_null_waps: df = df.drop(null_waps, axis=1)
 
 # Collect valid WAP names
@@ -89,4 +90,4 @@ if drop_duplicate_rows: df = df.drop_duplicates()
 
 # Replace Na's with the selected number
 df = df.replace(np.nan, x100)
-df.to_csv('data/processed/df.csv', index=False)
+df.to_csv('data/processed/df_remove_wide_waps.csv', index=False)
