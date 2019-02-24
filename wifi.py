@@ -5,13 +5,23 @@
 ## Importing Packages
 import numpy as np  # for calculations
 import pandas as pd  # for dataframes
-import sklearn
 from sklearn.svm import LinearSVC
 from sklearn.neighbors import KNeighborsClassifier
 from xgboost import XGBClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import GridSearchCV
+
+from sklearn.preprocessing import scale
 from sklearn.metrics import accuracy_score
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelBinarizer
+from sklearn.metrics import cohen_kappa_score
+from sklearn.metrics import mean_absolute_error
+from sklearn.externals.joblib import dump, load
+#from sklearn.metrics import confusion_matrix
+#from sklearn.model_selection import train_test_split
+#from sklearn.preprocessing import LabelBinarizer
+#from sklearn.model_selection import learning_curve
+#from sklearn.model_selection import ShuffleSplit
 
 import matplotlib.pyplot as plt
 plt.close('all')
@@ -22,9 +32,7 @@ import seaborn
 
 import os
 import csv 
-
-from sklearn.model_selection import learning_curve
-from sklearn.model_selection import ShuffleSplit
+from pathlib import Path
 
 import pickle
 #%%
@@ -33,7 +41,7 @@ os.getcwd()
 os.chdir('/Users/denizminican/Dropbox/03-Data_and_Coding/Ubiqum/Repositories/wifi-fingerprint')
 
 #%%
-## Create the df
+## Load training set
 train = pd.read_csv('data/trainingData.csv')
 # Load validation set
 val = pd.read_csv('data/validationData.csv')
@@ -48,35 +56,84 @@ val = val.replace(100, -110)
 train2 = train.loc[:, train.apply(pd.Series.nunique) != 1]
 val2 = val.loc[:, val.apply(pd.Series.nunique) != 1]
 
+# Finding common APs and getting them to a list
+tra_cols = list(train2.columns.values)
+val_cols = list(val2.columns.values)
+cols312 = list(item for item in val_cols if item in tra_cols)
+# Removing extra APs from the sample_train to have 312 APs
+train2 = train2[cols312] 
+val2 = val2[cols312] 
+
 # Sampling for train
 sample_train = train2.groupby(['BUILDINGID','FLOOR']).apply(lambda x: x.sample(n=900)) #.reset_index(drop=True)
-# Sampling for test
-# sample_val = val2.groupby(['BUILDINGID','FLOOR']).apply(lambda x: x.sample(n=20))  # too few samples
+# Drop levels to be able to identify rows ands divide it later
+sample_train.index.names
+sample_train = sample_train.droplevel(level= ['FLOOR', 'BUILDINGID']) # clear the additional indexes
 
-# Finding common APs and getting them to a list
-tra_cols = list(train.loc[:, train.apply(pd.Series.nunique) == 1].columns.values)
-val_cols = list(val2.columns.values)
-cols312 = list(item for item in val_cols if item not in tra_cols)
+## Creating training and test sets
+# Separating the validation set to two
+val2_1 = val2.sample(frac=0.5, replace= True, random_state=32)
+val2_2 = val2.drop(val2_1.index)  # why does it give 670 instead of 555???????????????
+# Create train set with half validation
+training = sample_train.append(val2_1)
+# Create validation set with rest
+validating = train2.drop(sample_train.index)
+validating = validating.sample(frac=0.3, replace=True, random_state=33) # t was too large
+validating = validating.append(val2_2)
 
-# Removing extra APs from the sample_train to have 312 APs
-sample_train = sample_train[cols312] 
-sample_train = sample_train.reset_index(drop=True) # clear the additional indexes
-val = val[cols312]
-
-# Prepare train and val waps objects
-train_waps = sample_train.iloc[:, :312]
-val_waps = val.iloc[:, :312]
-val_build = val.iloc[:, 315]
+train_waps = training.iloc[:, :312]
+val_waps = validating.iloc[:, :312]
 
 # Reorder columns
-train_dep = sample_train.iloc[:, 312:]
+train_dep = training.iloc[:, 312:]
+val_dep = validating.iloc[:, 312:]
 cols = train_dep.columns.tolist()
-cols = [cols[3]] + [cols [2]] + cols [0:2] + cols[4:]
+cols = [cols[3]] + cols [0:3] + cols[4:]
 train_dep = train_dep[cols]
-sample_train = pd.concat([train_waps, train_dep], axis=1)
+val_dep = val_dep[cols]
+training = pd.concat([train_waps, train_dep], axis=1)
+validating = pd.concat([val_waps, val_dep], axis=1)
+
+# Prepare train and val waps objects
+train_wapsb = training.iloc[:, :313]
+val_wapsb = validating.iloc[:, :313]
+train_wapsblo = training.iloc[:, :314]
+val_wapsblo = validating.iloc[:, :314]
+
+# Objects to be used for prediction performances
+val_build = validating.loc[:, 'BUILDINGID']
+val_floor = validating.loc[:,'FLOOR']
+val_lat = validating.loc[:,'LATITUDE']
+val_long = validating.loc[:,'LONGITUDE']
+
+train_lat = training.loc[:,'LATITUDE']
+train_long = training.loc[:,'LONGITUDE']
 
 # Removing values stronger than -30
 
+
+#%%
+### PREPROCESSING - TRAINING SET 2 - Taking top k signal WAPs from each row 
+
+## Some loop to choose the top APs
+# =============================================================================
+# # K i want for the job
+# k = 10  
+# # Preparing the dfs to fill
+# topdf_values = pd.DataFrame(columns=range(k),index=range(19937))
+# 
+# # Loop for taking the signal strengths
+# for i in range(len(train.index)):
+#     topdf_values.iloc[i, :] = train.iloc[i, :520].sort_values(axis = 0, ascending = False)[:k]
+# 
+# # Loop for taking the WAP numbers
+# topdf_ranks = train.iloc[:, :520].apply(lambda s: s.nlargest(10).index.tolist(), axis=1)
+# topdf_ranks_df = topdf_ranks.to_frame()
+# 
+# deneme = pd.DataFrame(train.iloc[0, :520].sort_values(axis = 0, ascending = False)[:k])
+# 
+# =============================================================================
+# Cbind row and row2
 
 #%%
 ### VISUALIZATION
@@ -107,7 +164,7 @@ plt.figure()
 train_phone = train.drop(['LATITUDE', 'LONGITUDE', 'USERID', 'FLOOR', 'BUILDINGID', 'SPACEID',
                           'RELATIVEPOSITION', 'TIMESTAMP'], axis = 1)
 melted_phone = pd.melt(train_phone, id_vars=['PHONEID'], var_name='WAP')
-melted_phone = melted_phone[melted_phone['value'] != 100]
+melted_phone = melted_phone[melted_phone['value'] != -110]
 melted_phone.boxplot(by = "PHONEID", column = "value")
 
 #%%
@@ -147,8 +204,10 @@ wap02 = list(set(wap0) & set(wap2))
 #%%
 # Saving objects to file
 # =============================================================================
-# wap_building = dict(wap01 = wap01, wap12 = wap12, wap02 = wap02, wap0 = wap0, wap1 = wap1, wap2 = wap2)
+# if not wap_building:
+#     wap_building = dict(wap01 = wap01, wap12 = wap12, wap02 = wap02, wap0 = wap0, wap1 = wap1, wap2 = wap2)
 # 
+# if 
 # with open('data/wap_buildings.pkl', 'wb') as f:
 #     pickle.dump(wap_building, f)
 # =============================================================================
@@ -197,27 +256,6 @@ fg = seaborn.FacetGrid(data=all_loc, hue='dataset')
 fg.map(plt.scatter, 'LATITUDE', 'LONGITUDE').add_legend()
 
 
-#%%
-### PREPROCESSING - TRAINING SET 2 - Taking top k signal WAPs from each row 
-
-## Some loop to choose the top APs
-# K i want for the job
-k = 10  
-# Preparing the dfs to fill
-topdf_values = pd.DataFrame(columns=range(k),index=range(19937))
-
-# Loop for taking the signal strengths
-for i in range(len(train.index)):
-    topdf_values.iloc[i, :] = train.iloc[i, :520].sort_values(axis = 0, ascending = False)[:k]
-
-# Loop for taking the WAP numbers
-topdf_ranks = train.iloc[:, :520].apply(lambda s: s.nlargest(10).index.tolist(), axis=1)
-topdf_ranks_df = topdf_ranks.to_frame()
-
-deneme = pd.DataFrame(train.iloc[0, :520].sort_values(axis = 0, ascending = False)[:k])
-
-# Cbind row and row2
-
 
 #%%
 ## Convert building and floor to categoric ()
@@ -227,59 +265,281 @@ deneme = pd.DataFrame(train.iloc[0, :520].sort_values(axis = 0, ascending = Fals
 # =============================================================================
 
 #%%
-#### MODELING
+#### MODELING ####
 
 ### 1- BUILDING - Models on Preprocessed Data
 
 # Remove the target variables from the training set
-y1 = sample_train.pop('BUILDINGID').values
-y2 = sample_train.pop('FLOOR').values
-y3 = sample_train.pop('LATITUDE').values
-y4 = sample_train.pop('LONGITUDE').values
+y1 = training['BUILDINGID']
+y2 = training['FLOOR']
+y3 = training['LONGITUDE']
+y4 = training['LATITUDE']
+yy = pd.concat([y3, y4], axis=1)
 
 ## Features and targets normalization (scaling)
 
-## Cross validation
+# Creating the objects of the classifiers
+svc1 = LinearSVC(random_state=0, max_iter= 10000, loss= 'hinge', verbose=2)  # verbose=2 to see the progress
+knn1 = KNeighborsClassifier(n_neighbors=3)
+xgb1 = XGBClassifier(n_jobs=-1, verbose=2)
+rf1 = RandomForestClassifier(max_features= 'sqrt' ,n_estimators=100, verbose=2)
+rfr = RandomForestRegressor(n_estimators=200, n_jobs=2, verbose=2)
 
-## Confusion matrix
+## Cross validation RFC
+rfcv = RandomForestClassifier(n_jobs=-1,max_features= 'sqrt' ,n_estimators=50, oob_score = True, verbose=2) 
+param_grid = { 
+    'n_estimators': [100, 250],
+    'max_features': ['auto', 'sqrt', 'log2']
+}
+CV_rfcv = GridSearchCV(estimator=rfcv, param_grid=param_grid, cv=5)
+
+# =============================================================================
+# ## Cross validation RFC
+# rfcv = RandomForestClassifier(n_jobs=-1,max_features= 'sqrt' ,n_estimators=50, oob_score = True, verbose=2) 
+# param_grid = { 
+#     'n_estimators': [100, 250],
+#     'max_features': ['auto', 'sqrt', 'log2']
+# }
+# CV_rfcv = GridSearchCV(estimator=rfcv, param_grid=param_grid, cv=5)
+# =============================================================================
 
 ## SVM
-# Create an object of type LinearSVC
-svc = LinearSVC(random_state=0, max_iter= 10000, verbose=2)  # verbose=2 to see the progress
-
 # Train on training data and predict using the testing data
-fit_svc1 = svc.fit(train_waps, y1)
-pred_svc1 = fit_svc1.predict(val_waps)
-svc.score(train_waps, y1)
-print ("LinearSVC accuracy : ", accuracy_score(val_waps, pred_svc1))
-
+train_waps_scaled = scale(train_waps)
+fit_svc1 = svc1.fit(train_waps_scaled, y1)
+val_waps_scaled = scale(val_waps)
+pred_svc1 = fit_svc1.predict(val_waps_scaled)
+svc1.score(train_waps_scaled, y1)
+accuracy_score(val_build, pred_svc1)
 
 ## KNN
-# Create an object of the classifier
-knn1 = KNeighborsClassifier(n_neighbors=3)
-
 # Train on training data and predict using the testing data
 fit_knn1 = knn1.fit(train_waps, y1)
 pred_knn1 = fit_knn1.predict(val_waps)
 knn1.score(train_waps, y1)
 accuracy_score(val_build, pred_knn1)
-
+cohen_kappa_score(val_build, pred_knn1)
+      
 ## XGBoost
-# Create an object of the classifier
-xgb1 = XGBClassifier()
-
 # Train on training data and predict using the testing data
 fit_xgb1 = xgb1.fit(train_waps, y1)
 pred_xgb1 = fit_xgb1.predict(val_waps)
 xgb1.score(train_waps, y1)
 accuracy_score(val_build, pred_xgb1)
 
+## RandomForest
+# Train on training data and predict using the testing data
+fit_rf1 = rf1.fit(train_waps, y1)
+pred_rf1 = fit_rf1.predict(val_waps)
+rf1.score(train_waps, y1)
+accuracy_score(val_build, pred_rf1)
+cohen_kappa_score(val_build, pred_rf1)
+
+# Confusion matrix
+pd.crosstab(val_build, pred_knn1)
+#%%
+#### MODELING ####
+
 ### 2- FLOOR - Models on Preprocessed Data
 
+## XGBoost
+# Train on training data and predict using the testing data
+fit_xgb2 = xgb1.fit(train_waps, y2)
+pred_xgb2 = fit_xgb2.predict(val_waps)
+xgb1.score(train_waps, y2)
+accuracy_score(val_floor, pred_xgb2)
 
-# Save models to file
-# models = dict(fit_svc1 = fit_svc1, fit_knn1 = fit_knn1, fit_xgb1)
+## RandomForest
+# Train on training data and predict using the testing data
+fit_rf2 = rf1.fit(train_waps, y2)
+pred_rf2 = fit_rf2.predict(val_waps)
+rf1.score(train_waps, y2)
+accuracy_score(val_floor, pred_rf2)
+cohen_kappa_score(val_floor, pred_rf2)
+
+# Confusion matrix
+pd.crosstab(val_floor, pred_rf2)
+#%%
+#### MODELING ####
+
+### 3- LONGITUDE - Models on Preprocessed Data
+# Add building predictions to dataframe
+val_wapsb_pred = val_waps.copy()
+val_wapsb_pred.loc[:, "BUILDINGID"] = pred_knn1
+
+## XGBoost
+xgb3_file = Path("xgb3.joblib")
+if xgb3_file.is_file():
+    print ("XGB3 here.")
+    fit_xgb3 = load('xgb3.joblib')
+else:
+    fit_xgb3 = xgb1.fit(train_wapsb, y3)
+    dump(fit_xgb3, 'xgb3.joblib')
+# Prediction
+pred_xgb3 = fit_xgb3.predict(val_wapsb_pred)
+mean_absolute_error(val_long, pred_xgb3)
+
+## RandomForest
+rf3_file = Path("rf3.joblib")
+if rf3_file.is_file():
+    print ("RF3 here.")
+    fit_rf3 = load('rf3.joblib')  
+else:
+    fit_rf3 = rfr.fit(train_wapsb, y3)
+    dump(fit_rf3, 'rf3.joblib') 
+# Prediction
+pred_rf3 = fit_rf3.predict(val_wapsb_pred)
+mean_absolute_error(val_long, pred_rf3)
+
+#%%
+#### MODELING ####
+
+### 4- LATITUDE - Models on Preprocessed Data
+# Add longitude predictions to dataframe
+val_wapsblo_pred = val_wapsb_pred.copy()
+val_wapsblo_pred.loc[:, "LONGITUDE"] = pred_rf3.copy()
+
+## XGBoost
+xgb4_file = Path("xgb4.joblib")
+if xgb4_file.is_file():
+    print ("I'm here.")
+    fit_xgb4 = load('xgb4.joblib')
+else:
+    fit_xgb4 = xgb1.fit(train_wapsblo, y4)
+    dump(fit_xgb4, 'xgb4.joblib')
+# Prediction
+pred_xgb4 = fit_xgb4.predict(val_wapsblo_pred)
+mean_absolute_error(val_lat, pred_xgb4)
+
+## XGBoost
+xgb4_2_file = Path("xgb4_2.joblib")
+if xgb4_2_file.is_file():
+    print ("XGB4-2 here.")
+    fit_xgb4_2 = load('xgb4_2.joblib') 
+else:
+    fit_xgb4_2 = xgb1.fit(train_wapsb, y4)
+    dump(fit_xgb4_2, 'xgb4_2.joblib') 
+# Prediction
+pred_xgb4_2 = fit_xgb4_2.predict(val_wapsb_pred)
+mean_absolute_error(val_lat, pred_xgb4_2)
+
+## RandomForest
+rf4_file = Path("rf4.joblib")
+if rf4_file.is_file():
+    print ("RF4 here.")
+    fit_rf4 = load('rf4.joblib') 
+else:
+    fit_rf4 = rfr.fit(train_wapsblo, y4)
+    dump(fit_rf4, 'rf4.joblib')  
+# Prediction
+pred_rf4 = fit_rf4.predict(val_wapsblo_pred)
+mean_absolute_error(val_lat, pred_rf4)
+
+## RandomForest2
+rf4_2_file = Path("rf4_2.joblib")
+if rf4_2_file.is_file():
+    print ("RF4-2 here.")
+    fit_rf4_2 = load('rf4_2.joblib') 
+else:
+    fit_rf4_2 = rfr.fit(train_wapsb, y4)
+    dump(fit_rf4_2, 'rf4_2.joblib') 
+# Prediction
+pred_rf4_2 = fit_rf4_2.predict(val_wapsb_pred)
+mean_absolute_error(val_lat, pred_rf4_2)
+
+#%%
+#### TEST DATA STUFF ####
+
+# Load test set
+test = pd.read_csv('data/testData.csv')
+
+## Finding common APs
+aps_train = train.iloc[:, :520]
+aps_val = val.iloc[:, :520]
+aps_test = test.iloc[:, :520]
+aps_train2 = train.loc[:, train.apply(pd.Series.nunique) != 1]
+aps_val2 = val.loc[:, val.apply(pd.Series.nunique) != 1]
+aps_test2 = test.loc[:, test.apply(pd.Series.nunique) != 1]
+
+aps_tetr = np.intersect1d(aps_test.columns, aps_train.columns)
+aps_teva = np.intersect1d(aps_test.columns, aps_val.columns)
+
+#%%
+#### TEST SET PREDICTIONS ####
+
+## 111111111111111111111111111111111111111111111111111111111111111111111111111111111111 ##
+cols_waps = train_waps.columns.tolist()
+aps_test = aps_test[cols_waps]
+aps_test = aps_test.replace(100, -110)
+
+## Building prediction
+pred_1_b = fit_knn1.predict(aps_test)
+# Prediction results
+unique1b, counts1b = np.unique(pred_1_b, return_counts=True)
+dict(zip(unique1b, counts1b))
+
+## Floor prediction
+pred_1_f = fit_rf2.predict(aps_test)
+# Prediction results
+unique1f, counts1f = np.unique(pred_1_f, return_counts=True)
+dict(zip(unique1f, counts1f))
+
+## Longitude prediction
+aps_test_pred = aps_test.copy()
+aps_test_pred.loc[:, "BUILDINGID"] = pred_1_b
+pred_1_lo = fit_xgb3.predict(aps_test_pred)
+
+## Latitude prediction
+pred_1_la = fit_rf4_2.predict(aps_test_pred)
+
+# Long-Lat visualization
+lo1 = pd.DataFrame(pred_1_lo)
+la1 = pd.DataFrame(pred_1_la)
+pred_lola = lo1.join(la1, lsuffix='LONGITUDE', rsuffix='LATITUDE')
+f1 = pd.DataFrame(pred_1_f)
+pred_lola = pred_lola.join(f1, rsuffix='FLOOR')
+
+plot3d = plt.figure().gca(projection='3d')
+plot3d.scatter(xs=pred_lola['0LONGITUDE'], ys=pred_lola['0LATITUDE'], zs=f1)
+plot3d.set_zlabel('Floor')
+plt.show()
+plt.figure()
+
+## 222222222222222222222222222222222222222222222222222222222222222222222222222222222222 ##
+pred_2_b = fit_rf1.predict(aps_test)
+pred_2_f = fit_rf2.predict(aps_test)
+
+aps_test_pred = aps_test.copy()
+aps_test_pred.loc[:, "BUILDINGID"] = pred_1_b
+
+pred_xgb3 = fit_xgb3.predict(val_wapsb_pred)
+
+val_wapsblo_pred = val_wapsb_pred.copy()
+val_wapsblo_pred.loc[:, "LONGITUDE"] = pred_rf3.copy()
+
+pred_rf4 = fit_rf4.predict(val_wapsblo_pred)
+
+## 333333333333333333333333333333333333333333333333333333333333333333333333333333333333 ##
+
+## 444444444444444444444444444444444444444444444444444444444444444444444444444444444444 ##
+
+
+#%%
+### PCA
+# =============================================================================
+# scaler=StandardScaler()  # instantiate
+# scaler.fit()  # compute the mean and standard which will be used in the next command
+# X_scaled=scaler.transform(cancer.data)# fit and transform can be applied together and I leave that for simple exercise
+# # we can check the minimum and maximum of the scaled features which we expect to be 0 and 1
+# print "after scaling minimum", X_scaled.min(axis=0)
 # 
-# with open('data/wap_buildings.pkl', 'wb') as f:
-#     pickle.dump(wap_building, f)
-
+# pca=PCA(n_components=3) 
+# pca.fit(X_scaled) 
+# X_pca=pca.transform(X_scaled) 
+# #let's check the shape of X_pca array
+# print "shape of X_pca", X_pca.shape
+# 
+# ex_variance=np.var(X_pca,axis=0)
+# ex_variance_ratio = ex_variance/np.sum(ex_variance)
+# print ex_variance_ratio 
+# =============================================================================
