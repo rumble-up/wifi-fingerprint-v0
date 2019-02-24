@@ -26,6 +26,9 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import cohen_kappa_score, mean_absolute_error
 from sklearn.externals import joblib
 
+import plotly.graph_objs as go
+from plotly.offline import plot
+
 # %% Custom functions ----------------------------------------------------------------
 
 # Calculate and display error metrics for Random Forest Classification
@@ -173,7 +176,7 @@ num_round = 250
 param = {'objective':'reg:linear',
          'max_depth':13, 
          'learning_rate': 0.24,
-         'n_estimators':100,
+#         'n_estimators':100,
          'early_stopping_rounds':10}
     
 # Tougher test set
@@ -196,14 +199,18 @@ df_pred['LATITUDE'] = bst_final.predict(dtest_final)
 df_pred  = df_pred.rename(columns = {'LATITUDE': 'LATITUDE_' + model_name + '_final.model'})
 df_pred.to_csv('predictions/marshmellow_latitude.csv')
 
+dtest2 = xgb.DMatrix(X_test2)
+mvp1_lat = bst.predict(dtest2)
+errorLat = mvp1_lat - y_test2
 
-#errorLat = xgbpredLat - y_test
-#
-#trace1 = go.Scatter(
-#        x=y_test,
-#        y=errorLat,
-#        mode='markers'
-#)
+
+trace1 = go.Scatter(
+        x=y_test2,
+        y=errorLat,
+        mode='markers'
+)
+
+plot([trace1])
 #
 #
 #print('The Latitude MAE is:', abs(xgbpredLat - y_test).mean())
@@ -232,13 +239,70 @@ bst_final_lon = xgb_fit(X_train_final, y_train_final, X_test2, y_test2, param)
 
 model_name = 'lon_xbg_tough'
 
-bst.save_model('models/'+ model_name + '_train.model')
+bst_lon.save_model('models/'+ model_name + '_train.model')
 bst_final.save_model('models/'+ model_name + '_final.model')
 
 dtest_final = xgb.DMatrix(X_pred_final)
 df_pred['LONGITUDE'] = bst_final_lon.predict(dtest_final)
 df_pred  = df_pred.rename(columns = {'LONGITUDE': 'LONGITUDE_' + model_name + '_final.model'})
-df_pred.to_csv('predictions/marshmellow_all.csv')
+
+# Calculate errors/residuals on toughest test set
+dtest2 = xgb.DMatrix(X_test2)
+mvp1_lon = bst_lon.predict(dtest2)
+errorLon = mvp1_lon - y_test2
+
+# %% Save predictions to CSV --------------------------------------------------
+df_pred.to_csv('predictions/marshmellow_all2.csv')
+
+# %% Visualize errors ---------------------------------------------------------
+
+error_both = errorLon + errorLat
+
+# Tough test set
+y_test2_long = test_val['LONGITUDE']
+y_test2_lat = test_val['LATITUDE']
+
+# Full test set
+y_test_long = test['LONGITUDE']
+y_test_lat = test['LATITUDE']
+
+def find_error(X_test, y_test, xgb_model):
+    dtest = xgb.DMatrix(X_test)
+    pred = xgb_model.predict(dtest)
+    error = pred - y_test
+    return(error)
+
+errorLat2 = find_error(X_test2, y_test2_lat, bst)
+
+
+# Choose type of error to plot
+error = errorLat2
+y_plot = y_test2_lat
+x_plot = y_test2_long
+
+# Ensure that zero is always the same color, gray
+zero = abs(0 - min(error) / (max(error) - min(error)))
+
+colorscale = [[0, 'rgba(5,113,176, 1)'], 
+               [zero, 'rgba(211, 211, 211, 1)' ],
+               [1, 'rgba(202,0,32, 1)']]
+
+trace = go.Scatter3d(
+        x=x_plot,
+        y=y_plot,
+        z=error,
+        mode='markers',
+        marker = dict(
+                size = 4,
+                color=error,
+                colorscale=colorscale
+        )
+)
+
+plot([trace])
+
+
+
 
 #
 #errorLong = xgbpredLong - y_test
