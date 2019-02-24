@@ -272,11 +272,21 @@ def find_error(X_test, y_test, xgb_model):
     error = pred - y_test
     return(error)
 
-errorLat2 = find_error(X_test2, y_test2_lat, bst)
+# Error on tough test set only
+error_lat2 = find_error(X_test2, y_test2_lat, bst)
+error_lon2 = find_error(X_test2, y_test2_lat, bst_lon)
+
+error_lat = find_error(X_test, y_test_lat, bst)
+error_lon = find_error(X_test, y_test_long, bst_lon)
 
 
-# Choose type of error to plot
-error = errorLat2
+# Error on full test set
+error = error_lon
+y_plot = y_test_lat
+x_plot = y_test_long
+
+# Error on tough test set
+error = error_lat2
 y_plot = y_test2_lat
 x_plot = y_test2_long
 
