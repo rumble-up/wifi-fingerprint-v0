@@ -35,6 +35,16 @@ def rfcPred(X_test, y_test, model):
     print('Accuracy:', model.score(X_test, y_test))
     print('Kappa:', cohen_kappa_score(clfpred, y_test))
 
+# Set up y for each target - Floor, Latitude, Longitude
+def set_y(target):
+    y_train = train[target]   
+    y_test = test[target]
+
+    # A more difficult test
+    y_test2 = test_val[target]
+    y_train_final = train_final[target]
+    return(y_train, y_test, y_test2, y_train_final)
+
 # %% Load data -------------------------------------------------------
 
 df_all = pd.read_csv('data/processed/df.csv')
@@ -109,20 +119,10 @@ X_pred_final = df_test[wap_names]
 #df_full = df_all[df_all['dataset'] != 'test']
 
 
-
-# %% Floor Random Forest Model ------------------------------------------------
-# Y TEST/TRAIN DATA -----------------------------------------------------------
-target = 'FLOOR'
-
-y_train = train[target]   
-y_test = test[target]
-
-# A more difficult test
-y_test2 = test_val[target]
-y_train_final = train_final[target]
-
 # %% Floor Random Forest Model --------------------------------------------
-# Model training and prediction
+
+# Set the target variables for FLOOR
+y_train, y_test, y_test2, y_train_final = set_y('FLOOR')
 
 rfc80 = RandomForestClassifier(n_estimators = 80, n_jobs =2, random_state=rand)
 rfc80 = rfc80.fit(X_train, y_train)
@@ -154,7 +154,6 @@ y_test = test[target]
 
 # A more difficult test
 y_test2 = test_val[target]
-
 
 y_train_final = df_full[target]
 
