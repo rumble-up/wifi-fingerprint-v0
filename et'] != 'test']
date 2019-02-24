@@ -1,0 +1,98 @@
+[1mdiff --git a/basic_pred2.py b/basic_pred2.py[m
+[1mindex 8e7581b..1d763b8 100644[m
+[1m--- a/basic_pred2.py[m
+[1m+++ b/basic_pred2.py[m
+[36m@@ -51,7 +51,7 @@[m [mdf_pred = pd.DataFrame([m
+ [m
+ # %% Prepare test/train -------------------------------------------------------[m
+ [m
+[31m-sample = 'all_train'  # or 'all_train'[m
+[32m+[m[32msample = 'less_train'  # or 'all_train'[m
+ [m
+ if sample == 'less_train':[m
+ [m
+[36m@@ -71,6 +71,7 @@[m [mif sample == 'less_train':[m
+     # Build the final test/train sets from both[m
+     test = pd.concat([test_val, test_tr])[m
+     train = pd.concat([train_val, train_tr])[m
+[32m+[m[32m    train_final = pd.concat([df_val, tr_samp])[m
+ [m
+ [m
+ if sample == 'all_train':[m
+[36m@@ -86,29 +87,36 @@[m [mif sample == 'all_train':[m
+     test = pd.concat([test, test_val])[m
+     # Training is all observations not in random test sample or provided test set[m
+     train = df_all[df_all['dataset'] != 'test'].drop(test.index)[m
+[32m+[m[41m    [m
+[32m+[m[32m    # Use all available data for final prediction[m
+[32m+[m[32m    train_final = pd.concat([df_tr, df_val])[m
+[32m+[m
+ [m
+[32m+[m[32m# %% X for test/train for Floor, Latitude, and Longitude models ---------------[m
+[32m+[m[41m    [m
+[32m+[m[32m# Set up x for all predictions[m
+[32m+[m[32mX_train = train[wap_names][m
+[32m+[m[32mX_test = test[wap_names][m
+[32m+[m[32m# A more difficult test[m
+[32m+[m[32mX_test2 = test_val[wap_names][m
+ [m
+[31m-# %% Final data for prediction[m
+[31m-df_full = df_all[df_all['dataset'] != 'test'][m
+[31m-X_train_final = df_full[wap_names][m
+[32m+[m[32m# Use all available data to train for final predictions[m
+[32m+[m[32mX_train_final = train_final[wap_names][m
+ [m
+[32m+[m[32m## The WAPS needed to make the final prediction[m
+ X_pred_final = df_test[wap_names][m
+[32m+[m[41m  [m
+ [m
+[31m-# %% Floor Random Forest Model --------------------------------------------[m
+[31m-# Test/train data[m
+[32m+[m[32m# %% Floor Random Forest Model ------------------------------------------------[m
+[32m+[m[32m# Y TEST/TRAIN DATA -----------------------------------------------------------[m
+ target = 'FLOOR'[m
+ [m
+ y_train = train[target]   [m
+[31m-X_train = train[wap_names][m
+[31m-[m
+ y_test = test[target][m
+[31m-X_test = test[wap_names][m
+ [m
+ # A more difficult test[m
+[31m-y_test2 = testval[target][m
+[31m-X_test2 = testval[wap_names][m
+[31m-[m
+[31m-y_train_final = df_full[target][m
+[32m+[m[32my_test2 = test_val[target][m
+[32m+[m[32my_train_final = df_test[target][m
+ [m
+ # %% Floor Random Forest Model --------------------------------------------[m
+ # Model training and prediction[m
+[36m@@ -129,23 +137,20 @@[m [mrfc80final = rfc80final.fit(X_train_final, y_train_final)[m
+ joblib.dump(rfc80, 'models/rfc80train.sav')[m
+ joblib.dump(rfc80final, 'models/rfc80final.sav')[m
+ [m
+[31m-df_pred['FLOOR'] = rfc80final.predict(X_pred_final)[m
+[31m-[m
+[32m+[m[32mdf_pred['FLOOR'] = rfc80final.predict(X_train_final)[m
+[32m+[m[32mdf_pred.to_csv('predictions/marshmellow.csv')[m
+ [m
+ # %% Latitude XGB Model --------------------------------------------[m
+[31m-# Test/train data ------------------------------------------------------------[m
+[32m+[m[32m# TEST/TRAIN DATA #### ------------------------------------------------------------[m
+ [m
+ target = 'LATITUDE'[m
+ [m
+ y_train = train[target]   [m
+[31m-X_train = train[wap_names][m
+[31m-[m
+ y_test = test[target][m
+[31m-X_test = test[wap_names][m
+ [m
+ # A more difficult test[m
+ y_test2 = test_val[target][m
+[31m-X_test2 = test_val[wap_names][m
+[32m+[m
+ [m
+ y_train_final = df_full[target][m
+ [m
