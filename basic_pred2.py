@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Purpose: MVP - Use raw signals to make model prediction
++ Uses a "smart" train/test set that will more likely mimic unknown data
 
-Status: IN PROGRESS
-Purpose: Use raw signals to make model prediction
+Status: Script works, but not polished
+
 
 Created on Feb 22 2019
 @author: Laura Stupin
@@ -148,8 +150,6 @@ joblib.dump(rfc80final, 'models/' + model_name + '_final.sav')
 # Be very careful changing this!!!
 df_pred['FLOOR'] = rfc80final.predict(X_pred_final)
 df_pred  = df_pred.rename(columns = {'FLOOR': 'FLOOR_' + model_name + 'final.sav'})
-df_pred.to_csv('predictions/marshmellow_floor.csv')
-
 
 # %% Latitude XGB Model --------------------------------------------
 
@@ -197,23 +197,6 @@ bst_final.save_model('models/'+ model_name + '_final.model')
 dtest_final = xgb.DMatrix(X_pred_final)
 df_pred['LATITUDE'] = bst_final.predict(dtest_final)
 df_pred  = df_pred.rename(columns = {'LATITUDE': 'LATITUDE_' + model_name + '_final.model'})
-df_pred.to_csv('predictions/marshmellow_latitude.csv')
-
-dtest2 = xgb.DMatrix(X_test2)
-mvp1_lat = bst.predict(dtest2)
-errorLat = mvp1_lat - y_test2
-
-
-trace1 = go.Scatter(
-        x=y_test2,
-        y=errorLat,
-        mode='markers'
-)
-
-plot([trace1])
-#
-#
-#print('The Latitude MAE is:', abs(xgbpredLat - y_test).mean())
 
 
 # %% Longitude XGB model ------------------------------------------------------
@@ -246,10 +229,6 @@ dtest_final = xgb.DMatrix(X_pred_final)
 df_pred['LONGITUDE'] = bst_final_lon.predict(dtest_final)
 df_pred  = df_pred.rename(columns = {'LONGITUDE': 'LONGITUDE_' + model_name + '_final.model'})
 
-# Calculate errors/residuals on toughest test set
-dtest2 = xgb.DMatrix(X_test2)
-mvp1_lon = bst_lon.predict(dtest2)
-errorLon = mvp1_lon - y_test2
 
 # %% Save predictions to CSV --------------------------------------------------
 df_pred.to_csv('predictions/marshmellow_all2.csv')
@@ -312,18 +291,3 @@ trace = go.Scatter3d(
 plot([trace])
 
 
-
-
-#
-#errorLong = xgbpredLong - y_test
-#
-#trace2 = go.Scatter(
-#        x=y_test,
-#        y=errorLong,
-#        mode='markers')
-#
-#plot([trace2])
-#
-#
-#
-#print('The Longitude MAE is:', abs(xgbpred - y_test).mean())
