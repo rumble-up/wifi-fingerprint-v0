@@ -136,29 +136,22 @@ rfcPred(X_test2, y_test2, rfc80)
 rfc80final = RandomForestClassifier(n_estimators = 80, n_jobs =2, random_state=rand)
 rfc80final = rfc80final.fit(X_train_final, y_train_final)
 
+model_name = 'rfc80'
+
 #Save model for reference
-joblib.dump(rfc80, 'models/rfc80train.sav')
-joblib.dump(rfc80final, 'models/rfc80final.sav')
+joblib.dump(rfc80, 'models/' + model_name + 'train.sav')
+joblib.dump(rfc80final, 'models/' + model_name + 'final.sav')
 
 # Be very careful changing this!!!
 df_pred['FLOOR'] = rfc80final.predict(X_pred_final)
-df_pred.to_csv('predictions/marshmellow.csv')
+df_pred  = df_pred.rename(columns = {'FLOOR': 'FLOOR_' + model_name + 'final.sav'})
+df_pred.to_csv('predictions/marshmellow_floor.csv')
+
 
 # %% Latitude XGB Model --------------------------------------------
-# TEST/TRAIN DATA #### ------------------------------------------------------------
 
-target = 'LATITUDE'
-
-y_train = train[target]   
-y_test = test[target]
-
-# A more difficult test
-y_test2 = test_val[target]
-
-y_train_final = df_full[target]
-
-# %% Latitude XGB Model --------------------------------------------
-# Train/fit model with normal test data ------------------------------------------------------------
+# Set the target variables for LATITUDE
+y_train, y_test, y_test2, y_train_final = set_y('LATITUDE')
 
 # Define function to try out different test/train splits
 def xgb_fit(X_train, y_train, X_test, y_test, param):
@@ -171,7 +164,6 @@ def xgb_fit(X_train, y_train, X_test, y_test, param):
     xgbpred = bst.predict(dtest)
     print('MAE:', mean_absolute_error(xgbpred, y_test))
       
-
     return(bst)
 
 # 400 was plenty
