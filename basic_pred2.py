@@ -136,11 +136,11 @@ rfcPred(X_test2, y_test2, rfc80)
 rfc80final = RandomForestClassifier(n_estimators = 80, n_jobs =2, random_state=rand)
 rfc80final = rfc80final.fit(X_train_final, y_train_final)
 
-model_name = 'rfc80'
+model_name = 'floor_rfc80'
 
 #Save model for reference
-joblib.dump(rfc80, 'models/' + model_name + 'train.sav')
-joblib.dump(rfc80final, 'models/' + model_name + 'final.sav')
+joblib.dump(rfc80, 'models/' + model_name + '_train.sav')
+joblib.dump(rfc80final, 'models/' + model_name + '_final.sav')
 
 # Be very careful changing this!!!
 df_pred['FLOOR'] = rfc80final.predict(X_pred_final)
@@ -185,100 +185,71 @@ bst = xgb_fit(X_train, y_train, X_test, y_test, param)
 
 bst_final = xgb_fit(X_train_final, y_train_final, X_test2, y_test2, param)
 
-model_name = 'xgb_lat_tough'
+model_name = 'lat_xgb_tough'
 
-bst.save_model('models/'+ model_name + 'train.model')
-bst_final.save_model('models/'+ model_name + 'final.model')
+bst.save_model('models/'+ model_name + '_train.model')
+bst_final.save_model('models/'+ model_name + '_final.model')
 
 # Make final prediction
 dtest_final = xgb.DMatrix(X_pred_final)
 df_pred['LATITUDE'] = bst_final.predict(dtest_final)
-df_pred  = df_pred.rename(columns = {'LATITUDE': 'LATITUDE_' + model_name + 'final.model'})
+df_pred  = df_pred.rename(columns = {'LATITUDE': 'LATITUDE_' + model_name + '_final.model'})
 df_pred.to_csv('predictions/marshmellow_latitude.csv')
 
 
-errorLat = xgbpredLat - y_test
-
-trace1 = go.Scatter(
-        x=y_test,
-        y=errorLat,
-        mode='markers'
-)
-
-
-print('The Latitude MAE is:', abs(xgbpredLat - y_test).mean())
-
-# %% Latitude XGB Model --------------------------------------------
-# Tough test data: Train/fit model ------------------------------------------------------------
-
-# 400 was plenty
-num_round = 400
-param = {'objective':'reg:linear',
-         'max_depth':10, 
-         'learning_rate': 0.3,
-         'n_estimators':50,
-         'early_stopping_rounds':10}
-dtrain = xgb.DMatrix(X_train, label=y_train)
-dtest = xgb.DMatrix(X_test, label=y_test)
-evallist = [(dtest, 'eval'), (dtrain, 'train')]
-
-
-bst = xgb.train(param, dtrain, num_round, evallist)
-
-
-# Output array of predictions
-xgbpredLat = bst.predict(dtest)
-mean_absolute_error(xgbpredLat, y_test)
-
-bst.save_model('models/lat_xgb.model')
-
-errorLat = xgbpredLat - y_test
-
-trace1 = go.Scatter(
-        x=y_test,
-        y=errorLat,
-        mode='markers'
-)
-
-
-print('The Latitude MAE is:', abs(xgbpredLat - y_test).mean())
+#errorLat = xgbpredLat - y_test
+#
+#trace1 = go.Scatter(
+#        x=y_test,
+#        y=errorLat,
+#        mode='markers'
+#)
+#
+#
+#print('The Latitude MAE is:', abs(xgbpredLat - y_test).mean())
 
 
 # %% Longitude XGB model ------------------------------------------------------
-X = df_full[wap_names]
-y = df_full['LONGITUDE']
 
-X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size = 0.25, random_state = rand)
+# Set the target variables for LATITUDE
+y_train, y_test, y_test2, y_train_final = set_y('LONGITUDE')
 
+num_round = 450
+param = {'objective':'reg:linear',
+         'max_depth':7, 
+         'learning_rate': 0.3,
+         'gamma':5,
+         'early_stopping_rounds':10}
 
-param = {'max_depth':6, 'objective':'reg:linear'}
-
-
-dtrain = xgb.DMatrix(X_train, label=y_train)
-dtest = xgb.DMatrix(X_test, label=y_test)
-
-evallist = [(dtest, 'eval'), (dtrain, 'train')]
-
-# 400 was plenty
-num_round = 600
-bst = xgb.train(param, dtrain, num_round, evallist)
-bst.save_model('models/xgbLong500_drop_noiWAP.model')
+# Tougher test set
+bst_lon = xgb_fit(X_train, y_train, X_test2, y_test2, param)
+#Easier test set
+bst_lon = xgb_fit(X_train, y_train, X_test, y_test, param)    
 
 
-# Output array of predictions
-xgbpredLong = bst.predict(dtest)
+# Make final prediction
+bst_final_lon = xgb_fit(X_train_final, y_train_final, X_test2, y_test2, param)
 
+model_name = 'lon_xbg_tough'
 
-errorLong = xgbpredLong - y_test
+bst.save_model('models/'+ model_name + '_train.model')
+bst_final.save_model('models/'+ model_name + '_final.model')
 
-trace2 = go.Scatter(
-        x=y_test,
-        y=errorLong,
-        mode='markers')
+dtest_final = xgb.DMatrix(X_pred_final)
+df_pred['LONGITUDE'] = bst_final_lon.predict(dtest_final)
+df_pred  = df_pred.rename(columns = {'LONGITUDE': 'LONGITUDE_' + model_name + '_final.model'})
+df_pred.to_csv('predictions/marshmellow_all.csv')
 
-plot([trace2])
-
-
-
-print('The Longitude MAE is:', abs(xgbpred - y_test).mean())
+#
+#errorLong = xgbpredLong - y_test
+#
+#trace2 = go.Scatter(
+#        x=y_test,
+#        y=errorLong,
+#        mode='markers')
+#
+#plot([trace2])
+#
+#
+#
+#print('The Longitude MAE is:', abs(xgbpred - y_test).mean())
