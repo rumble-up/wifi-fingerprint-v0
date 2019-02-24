@@ -155,6 +155,8 @@ y_train, y_test, y_test2, y_train_final = set_y('LATITUDE')
 
 # Define function to try out different test/train splits
 def xgb_fit(X_train, y_train, X_test, y_test, param):
+    
+    # This is the required format for pure xgb without sklearn API
     dtrain = xgb.DMatrix(X_train, label=y_train)
     dtest = xgb.DMatrix(X_test, label=y_test)
     evallist = [(dtest, 'eval'), (dtrain, 'train')]
@@ -179,10 +181,21 @@ bst = xgb_fit(X_train, y_train, X_test2, y_test2, param)
 
 bst = xgb_fit(X_train, y_train, X_test, y_test, param)
 
-# Output array of predictions
 
 
-bst.save_model('models/lat_xgb_best_tough.model')
+bst_final = xgb_fit(X_train_final, y_train_final, X_test2, y_test2, param)
+
+model_name = 'xgb_lat_tough'
+
+bst.save_model('models/'+ model_name + 'train.model')
+bst_final.save_model('models/'+ model_name + 'final.model')
+
+# Make final prediction
+dtest_final = xgb.DMatrix(X_pred_final)
+df_pred['LATITUDE'] = bst_final.predict(dtest_final)
+df_pred  = df_pred.rename(columns = {'LATITUDE': 'LATITUDE_' + model_name + 'final.model'})
+df_pred.to_csv('predictions/marshmellow_latitude.csv')
+
 
 errorLat = xgbpredLat - y_test
 
