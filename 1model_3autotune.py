@@ -23,6 +23,7 @@ chdir(wd)
 import pandas as pd
 import xgboost as xgb
 from pprint import pprint
+import time
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import cohen_kappa_score, mean_absolute_error
@@ -194,37 +195,54 @@ df_pred  = df_pred.rename(columns = {'FLOOR': 'FLOOR_' + model_name + 'final.sav
 df_pred.to_csv('predictions/mvp_autotune_overfit.csv')
 
 
-
-#%% 
-
-rfc80 = RandomForestClassifier(n_estimators = 80, n_jobs =2, random_state=rand)
-rfc80 = rfc80.fit(X_train, y_train)
-
-# Look at error metrics
-rfc_pred(X_test, y_test, rfc80)
-# Try the harder test set
-rfc_pred(X_test2, y_test2, rfc80)
-
-# Train model on full dataset and save for final prediction
-rfc80final = RandomForestClassifier(n_estimators = 80, n_jobs =2, random_state=rand)
-rfc80final = rfc80final.fit(X_train_final, y_train_final)
-
-model_name = 'floor_rfc80'
-
-#Save model for reference
-joblib.dump(rfc80, 'models/' + model_name + '_train.sav')
-joblib.dump(rfc80final, 'models/' + model_name + '_final.sav')
-
-# Be very careful changing this!!!
-df_pred['FLOOR'] = rfc80final.predict(X_pred_final)
-df_pred  = df_pred.rename(columns = {'FLOOR': 'FLOOR_' + model_name + 'final.sav'})
-
-
-
 # %% Latitude XGB Model --------------------------------------------
+
+# https://gist.github.com/wrwr/3f6b66bf4ee01bf48be965f60d14454d
 
 # Set the target variables for LATITUDE
 y_train, y_test, y_test2, y_train_final = set_y('LATITUDE')
+
+reg = xgb.XGBRegressor()
+
+        
+n_iter_search = 6
+random_grid = {'objective': ['reg:linear'],
+               'silent': [False],
+               'n_estimators': [350],       #n_estimators is equivalent to num_rounds in alternative syntax
+               'max_depth': [3, 7, 13, 16],
+               'learning_rate': [0.1, 0.24, 0.3]}
+
+fit_params = {'eval_metric': 'mae',
+              'early_stopping_rounds': 10,
+              'eval_set': [(X_test2, y_test2)]}
+
+reg_rscv = RandomizedSearchCV(reg, random_grid,
+                              n_iter=n_iter_search,
+                              n_jobs=2,
+                              verbose=2,
+                              cv=5,
+                              fit_params=fit_params,
+                              scoring='neg_mean_absolute_error',
+                              random_state=rand)
+
+print("LATITUDE randomized search...")
+search_time_start = time.time()
+reg_rscv = reg_rscv.fit(X_train, y_train)
+print("Randomized search time:", time.time() - search_time_start)
+
+best_score = reg_rscv.best_score_
+best_params = reg_rscv.best_params_
+pprint(reg_rscv.cv_results_['mean_test_score'])
+print("Best score: {}".format(best_score))
+print("Best params: ")
+for param_name in sorted(best_params.keys()):
+    print('%s: %r' % (param_name, best_params[param_name]))
+
+
+f0 = reg_rscv.predict(X_test2)
+
+mean_absolute_error(f0, y_test2)
+# %% Leftovers from old Latitude
 
 # Define function to try out different test/train splits
 def xgb_fit(X_train, y_train, X_test, y_test, param):
