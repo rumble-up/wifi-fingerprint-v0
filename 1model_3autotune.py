@@ -157,9 +157,9 @@ rf_rscv = RandomizedSearchCV(rf, param_distributions=random_grid,
 
 rf_rscv1 = rf_rscv.fit(X_train, y_train)
 
-type(rf_rscv1)
-isinstance(rf_rscv1, sklearn.model_selection._search.RandomizedSearchCV)
-rf_rscv1.__class__ == sklearn.model_selection._search.RandomizedSearchCV
+
+# %% Report Floor Model -------------------------------------------------------
+
 # Define an accuracy report for models
 def acc_report(model, tag, is_search, X_test, y_test, X_test2, y_test2):
     accuracy = dict(test_acc = model.score(X_test, y_test),
@@ -200,11 +200,11 @@ joblib.dump(rf_rscv1, 'models/' + model_name + '_RSCV.sav')
 joblib.dump(rf_rscv_final, 'models/' + model_name + '_final.sav')
 
 
-
+# %% Final Floor prediction ---------------------------------------------------
 
 # Be very careful changing this!!!
 df_pred['FLOOR'] = rf_rscv_final.predict(X_pred_final)
-df_pred  = df_pred.rename(columns = {'FLOOR': 'FLOOR_' + model_name + 'final.sav'})
+df_pred  = df_pred.rename(columns = {'FLOOR': 'FLOOR_' + model_name + '_final.sav'})
 
 # Save csv before other predictions are ready
 df_pred.to_csv('predictions/mvp_autotune_overfit.csv')
