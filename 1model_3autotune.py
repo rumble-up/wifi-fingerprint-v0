@@ -67,11 +67,11 @@ df_pred = pd.DataFrame(
 
 # %% Prepare test/train -------------------------------------------------------
 
-sample = '5:1 train:val'  # or 'all_train'
+sample = '5_1_train_val'  # or 'all_train'
 
 # less_train has 400*13 = 5200 train samples
 #                1110 all validation, so 5:1 weight train to validation
-if sample == '5:1 train:val':
+if sample == '5_1_train_val':
 
     # Build a random sample of val data, 25 from each floor/building
     test_val = df_val.groupby(['BUILDINGID', 'FLOOR']).apply(lambda x: x.sample(n=20, random_state=rand))
@@ -157,15 +157,18 @@ rf_rscv = RandomizedSearchCV(rf, param_distributions=random_grid,
 
 rf_rscv1 = rf_rscv.fit(X_train, y_train)
 
+type(rf_rscv1)
+isinstance(rf_rscv1, sklearn.model_selection._search.RandomizedSearchCV)
+rf_rscv1.__class__ == sklearn.model_selection._search.RandomizedSearchCV
 # Define an accuracy report for models
-def acc_report(model, tag, X_test, y_test, X_test2, y_test2):
+def acc_report(model, tag, is_search, X_test, y_test, X_test2, y_test2):
     accuracy = dict(test_acc = model.score(X_test, y_test),
                     test_kappa = cohen_kappa_score(model.predict(X_test), y_test),
                     test2_acc = model.score(X_test2, y_test2),
                     test2_kappa = cohen_kappa_score(model.predict(X_test2), y_test2))
-    
-    print(tag, 'BEST PARAMETERS')
-    pprint(model.best_params_)
+    if is_search:
+        print(tag, 'BEST PARAMETERS')
+        pprint(model.best_params_)
     print('\n', tag, 'FULL TEST')
     print(pd.crosstab(y_test, model.predict(X_test), rownames=['Actual'], colnames=['Predicted']))
     print('\n', tag, ' TEST WITH VALIDATION ONLY')
@@ -175,19 +178,26 @@ def acc_report(model, tag, X_test, y_test, X_test2, y_test2):
 
 print('**********************************************************************')
 print('Floor model complete. \n')
-acc_report(rf_rscv1, 'First model', X_test, y_test, X_test2, y_test2)
+acc_report(rf_rscv1, 'First model', True, 
+           X_test, y_test, X_test2, y_test2)
 
-type(rf_rscv1.best_estimator_)
+# Choose the best estimator from Random Search as final model
+rf_rscv_final = rf_rscv1.best_estimator_
 
-f0 = rf_rscv1.best_estimator_
-type(f0)
-f0.fit(X_train_final, y_train_final)
+# Take best model, fit with all available data
+rf_rscv_final = rf_rscv_final.fit(X_train_final, y_train_final)
 
-acc_report(f0, 'Model trained on full set', X_test, y_test, X_test2, y_test2)
 
-model_name = 'rf_rscv'
+print('**********************************************************************')
+print('Final model trained on full dataset')
+acc_report(rf_rscv_final, 'Model trained on full set', False,
+           X_test, y_test, X_test2, y_test2)
 
-joblib.dump(rf_rscv1, 'models/' + model_name + '_train.sav')
+# Save model
+model_name = 'rf_rscv_' + sample
+
+joblib.dump(rf_rscv1, 'models/' + model_name + '_RSCV.sav')
+joblib.dump(rf_rscv_final, 'models/' + model_name + '_final.sav')
 
 
 print('**********************************************************************')
