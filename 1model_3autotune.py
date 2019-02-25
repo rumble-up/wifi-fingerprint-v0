@@ -200,21 +200,6 @@ joblib.dump(rf_rscv1, 'models/' + model_name + '_RSCV.sav')
 joblib.dump(rf_rscv_final, 'models/' + model_name + '_final.sav')
 
 
-print('**********************************************************************')
-print('\n Training final model... ')
-
-# Chosen model with new data
-rf_rscv_final = rf_rscv1.fit(X_train_final, y_train_final)
-
-rf_rscv_final = rf_rscv1.best_estimator_
-rf_rscv_final = rf_rscv_final.fit(X_train_final, y_train_final)
-
-# Build a new model
-#rf_rscv_final = rf_rscv.fit(X_train_final, y_train_final)
-print('Floor final model complete. \n')
-acc_report(rf_rscv_final, 'FINAL MODEL', X_test, y_test, X_test2, y_test2)
-
-joblib.dump(rf_rscv_final, 'models/' + model_name + '_final.sav')
 
 
 # Be very careful changing this!!!
