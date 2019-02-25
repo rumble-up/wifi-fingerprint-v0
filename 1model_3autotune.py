@@ -134,7 +134,7 @@ rf = RandomForestClassifier()
 # PRINT MODEL DEFAULTS!
 pprint(rf.get_params())
 
-n_iter_search = 7
+n_iter_search = 9
 random_grid = {"n_estimators": [80, 100, 120],
               "max_features": ['auto', 'sqrt'],
               "max_depth": [10, 50, 100, None],
@@ -149,22 +149,50 @@ rf_rscv = RandomizedSearchCV(rf, param_distributions=random_grid,
                              n_jobs = 2,
                              scoring = 'accuracy')
 
-rf_rscv = rf_rscv.fit(X_train, y_train)
+rf_rscv1 = rf_rscv.fit(X_train, y_train)
 
-accuracy = dict(test_acc = rf_rscv.score(X_test, y_test),
-                test_kappa = cohen_kappa_score(rf_rscv.predict(X_test), y_test),
-                test2_acc = rf_rscv.score(X_test2, y_test2),
-                test2_kappa = cohen_kappa_score(rf_rscv.predict(X_test2), y_test2))
+# Define an accuracy report for models
+def acc_report(model, tag, X_test, y_test, X_test2, y_test2):
+    accuracy = dict(test_acc = model.score(X_test, y_test),
+                    test_kappa = cohen_kappa_score(model.predict(X_test), y_test),
+                    test2_acc = model.score(X_test2, y_test2),
+                    test2_kappa = cohen_kappa_score(model.predict(X_test2), y_test2))
+    
+    print(tag, 'BEST PARAMETERS')
+    pprint(model.best_params_)
+    print('\n', tag, 'FULL TEST')
+    print(pd.crosstab(y_test, model.predict(X_test), rownames=['Actual'], colnames=['Predicted']))
+    print('\n', tag, ' TEST WITH VALIDATION ONLY')
+    print(pd.crosstab(y_test2, model.predict(X_test2), rownames=['Actual'], colnames=['Predicted']))
+    pprint(accuracy)
 
 
+print('**********************************************************************')
+print('Floor model complete. \n')
+acc_report(rf_rscv1, 'First model', X_test, y_test, X_test2, y_test2)
 
-print('Floor complete. Best params:')
-pprint(rf_rscv.best_params_)
-print('FULL TEST')
-print(pd.crosstab(y_test, rf_rscv.predict(X_test), rownames=['Actual'], colnames=['Predicted']))
-print('TEST WITH VALIDATION ONLY')
-print(pd.crosstab(y_test2, rf_rscv.predict(X_test2), rownames=['Actual'], colnames=['Predicted']))
-pprint(accuracy)
+model_name = 'rf_rscv'
+
+joblib.dump(rf_rscv1, 'models/' + model_name + '_train.sav')
+
+
+print('**********************************************************************')
+print('\n Training final model... ')
+
+rf_rscv_final = rf_rscv.fit(X_train_final, y_train_final)
+print('Floor final model complete. \n')
+acc_report(rf_rscv_final, 'FINAL MODEL', X_test, y_test, X_test2, y_test2)
+
+joblib.dump(rf_rscv_final, 'models/' + model_name + '_final.sav')
+
+
+# Be very careful changing this!!!
+df_pred['FLOOR'] = rf_rscv_final.predict(X_pred_final)
+df_pred  = df_pred.rename(columns = {'FLOOR': 'FLOOR_' + model_name + 'final.sav'})
+
+# Save csv before other predictions are ready
+df_pred.to_csv('predictions/mvp_autotune_overfit.csv')
+
 
 
 #%% 
@@ -190,7 +218,7 @@ joblib.dump(rfc80final, 'models/' + model_name + '_final.sav')
 # Be very careful changing this!!!
 df_pred['FLOOR'] = rfc80final.predict(X_pred_final)
 df_pred  = df_pred.rename(columns = {'FLOOR': 'FLOOR_' + model_name + 'final.sav'})
-df_pred.to_csv('predictions/marshmellow_floor.csv')
+
 
 
 # %% Latitude XGB Model --------------------------------------------
