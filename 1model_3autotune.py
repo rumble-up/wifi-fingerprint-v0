@@ -13,6 +13,8 @@ Created on Feb 22 2019
 
 rand = 42
 
+# Note: set iter_search for each Random below
+
 # %% Setup --------------------------------------------------------------------
 
 # Change working directory to the folder where script is stored.
@@ -50,7 +52,38 @@ def set_y(target):
     y_test2 = test_val[target]
     y_train_final = train_final[target]
     return(y_train, y_test, y_test2, y_train_final)
+    
+# Define an accuracy report for Random Forest classification models
+def acc_report(model, tag, is_search, X_test, y_test, X_test2, y_test2):
+    accuracy = dict(test_acc = model.score(X_test, y_test),
+                    test_kappa = cohen_kappa_score(model.predict(X_test), y_test),
+                    test2_acc = model.score(X_test2, y_test2),
+                    test2_kappa = cohen_kappa_score(model.predict(X_test2), y_test2))
+    if is_search:
+        print(tag, 'BEST PARAMETERS')
+        pprint(model.best_params_)
+    print('\n', tag, 'FULL TEST')
+    print(pd.crosstab(y_test, model.predict(X_test), rownames=['Actual'], colnames=['Predicted']))
+    print('\n', tag, ' TEST WITH VALIDATION ONLY')
+    print(pd.crosstab(y_test2, model.predict(X_test2), rownames=['Actual'], colnames=['Predicted']))
+    pprint(accuracy)
 
+def mae_report(model, is_search, X_test, y_test, X_test2, y_test2):
+    
+    if is_search: 
+        best_score = model.best_score_
+        best_params = model.best_params_
+        print("Cross Validation Scores:", reg_rscv.cv_results_['mean_test_score'])
+        print("Best score: {}".format(best_score))
+        print("Best params: ")
+        for param_name in sorted(best_params.keys()):
+            print('%s: %r' % (param_name, best_params[param_name]))
+    
+    mae = dict(test_mae = mean_absolute_error(model.predict(X_test), y_test),
+               test2_mae = mean_absolute_error(model.predict(X_test2), y_test2)
+               )
+             
+    pprint(mae)
 # %% Load data -------------------------------------------------------
 
 df_all = pd.read_csv('data/processed/df.csv')
@@ -155,26 +188,15 @@ rf_rscv = RandomizedSearchCV(rf, param_distributions=random_grid,
                              n_jobs = 2,
                              scoring = 'accuracy')
 
+print("Performing randomized search for floor...")
+print("Number of iterations:", n_iter_search)
+search_time_start = time.time()
 rf_rscv1 = rf_rscv.fit(X_train, y_train)
+print("Randomized search time:", time.time() - search_time_start)
+
 
 
 # %% Report Floor Model -------------------------------------------------------
-
-# Define an accuracy report for models
-def acc_report(model, tag, is_search, X_test, y_test, X_test2, y_test2):
-    accuracy = dict(test_acc = model.score(X_test, y_test),
-                    test_kappa = cohen_kappa_score(model.predict(X_test), y_test),
-                    test2_acc = model.score(X_test2, y_test2),
-                    test2_kappa = cohen_kappa_score(model.predict(X_test2), y_test2))
-    if is_search:
-        print(tag, 'BEST PARAMETERS')
-        pprint(model.best_params_)
-    print('\n', tag, 'FULL TEST')
-    print(pd.crosstab(y_test, model.predict(X_test), rownames=['Actual'], colnames=['Predicted']))
-    print('\n', tag, ' TEST WITH VALIDATION ONLY')
-    print(pd.crosstab(y_test2, model.predict(X_test2), rownames=['Actual'], colnames=['Predicted']))
-    pprint(accuracy)
-
 
 print('**********************************************************************')
 print('Floor model complete. \n')
@@ -220,43 +242,39 @@ y_train, y_test, y_test2, y_train_final = set_y('LATITUDE')
 reg = xgb.XGBRegressor()
 
         
-n_iter_search = 6
+n_iter_search = 8
 random_grid = {'objective': ['reg:linear'],
-               'silent': [False],
+               'silent': [True],
                'n_estimators': [350],       #n_estimators is equivalent to num_rounds in alternative syntax
                'max_depth': [3, 7, 13, 16],
-               'learning_rate': [0.1, 0.24, 0.3]}
+               'learning_rate': [0.05, 0.1, 0.15]}
 
 fit_params = {'eval_metric': 'mae',
               'early_stopping_rounds': 10,
               'eval_set': [(X_test2, y_test2)]}
 
-reg_rscv = RandomizedSearchCV(reg, random_grid,
+reg_lat_rscv = RandomizedSearchCV(reg, random_grid,
                               n_iter=n_iter_search,
                               n_jobs=2,
-                              verbose=2,
+                              verbose=0,
                               cv=5,
                               fit_params=fit_params,
                               scoring='neg_mean_absolute_error',
                               random_state=rand)
 
-print("LATITUDE randomized search...")
+print("Performing LATITUDE randomized search...")
+print("Number of iterations:", n_iter_search)
 search_time_start = time.time()
-reg_rscv = reg_rscv.fit(X_train, y_train)
-print("Randomized search time:", time.time() - search_time_start)
-
-best_score = reg_rscv.best_score_
-best_params = reg_rscv.best_params_
-pprint(reg_rscv.cv_results_['mean_test_score'])
-print("Best score: {}".format(best_score))
-print("Best params: ")
-for param_name in sorted(best_params.keys()):
-    print('%s: %r' % (param_name, best_params[param_name]))
+reg_lat_rscv = reg_lat_rscv.fit(X_train, y_train)
+print("Randomized search time:", (time.time() - search_time_start)/60, 'min')
 
 
-f0 = reg_rscv.predict(X_test2)
+print("LATITUDE randomized search results ************************")
+mae_report(reg_lat_rscv, True, X_test, y_test, X_test2, y_test2)
 
-mean_absolute_error(f0, y_test2)
+# %% Final LATITUDE prediction --------------------------------------------------
+
+
 # %% Leftovers from old Latitude
 
 # Define function to try out different test/train splits
