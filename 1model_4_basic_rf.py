@@ -172,6 +172,7 @@ X_pred_final = df_test[wap_names]
 
 def rf_bld_flr(target, rand_search, n_jobs, save_model):
     
+    
     # Set the target variables for FLOOR
     y_train, y_test, y_test2, y_train_final = set_y(target)
 
@@ -218,7 +219,7 @@ def rf_bld_flr(target, rand_search, n_jobs, save_model):
                X_test, y_test, X_test2, y_test2)
 
     # Save model
-    model_name = target + 'rand'+ str(rand_search) + '_rf_rscv_' + sample
+    model_name = target + '_rand'+ str(rand_search) + '_rf_rscv_' + sample
     
     if save_model:
         joblib.dump(rf_rscv, 'models/' + model_name + '.sav')
@@ -231,29 +232,29 @@ def rf_bld_flr(target, rand_search, n_jobs, save_model):
     df_pred[target] = rf_rscv_final.predict(X_pred_final)
 #    df_pred  = df_pred.rename(columns = {'FLOOR': 'FLOOR_' + model_name + '_final.sav'})
 
-    
+    return(rf_rscv, rf_rscv_final)
 # %% Building prediction ---------------------------------------------------------
-    rf_bld_flr(target='BUILDINGID', 
-            rand_search=3, 
-            n_jobs=2, 
-            save_model=True)
+
+
+bld_model, bld_model_final = rf_bld_flr(target='BUILDINGID', 
+                                        rand_search=3, 
+                                        n_jobs=2, 
+                                        save_model=True)
     
 # %% Add BUILDINGID to predictors
-    
+ 
 # Set up x for all predictions
-X_train['bld_pred'] = train[wap_names]
-X_test = test[wap_names]
-# A more difficult test
-X_test2 = test_val[wap_names]
-
-# Use all available data to train for final predictions
-X_train_final = train_final[wap_names]
+X_train.loc[:,'bld_pred'] = bld_model.predict(X_train)
+X_test.loc[:, 'bld_pred'] = bld_model.predict(X_test)
+X_test2.loc[:, 'bld_pred'] = bld_model.predict(X_test2)
+X_train_final.loc[:, 'bld_pred'] = bld_model.predict(X_train_final)
+X_pred_final.loc[:, 'bld_pred'] = bld_model.predict(X_pred_final)
 
 # %% Floor prediction ---------------------------------------------------------
-    rf_bld_flr(target='FLOOR', 
-            rand_search=3, 
-            n_jobs=2, 
-            save_model=True)
+flr_model, flr_model_final = rf_bld_flr(target='FLOOR', 
+                                    rand_search=3, 
+                                    n_jobs=2, 
+                                    save_model=True)
 
 
 # %% Old Code below -----------------------------------------------------------
