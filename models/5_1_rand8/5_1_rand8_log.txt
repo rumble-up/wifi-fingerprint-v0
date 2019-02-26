@@ -18,50 +18,54 @@ runfile('/home/chief/0githubi/wifi-fingerprint/1model_3autotune.py', wdir='/home
  'warm_start': False}
 Performing randomized search for floor...
 Number of iterations: 9
-Randomized search time: 28.826526880264282
+/home/chief/anaconda3/lib/python3.6/site-packages/sklearn/model_selection/_search.py:841: DeprecationWarning:
+
+The default of the `iid` parameter will change from True to False in version 0.22 and will be removed in 0.24. This will change numeric results when test-set sizes are unequal.
+
+Randomized search time: 27.18367862701416
 **********************************************************************
 Floor model complete. 
 
 First model BEST PARAMETERS
 {'bootstrap': False,
- 'max_depth': 50,
- 'max_features': 'sqrt',
+ 'max_depth': 100,
+ 'max_features': 'auto',
  'min_samples_leaf': 1,
- 'min_samples_split': 2,
- 'n_estimators': 100}
+ 'min_samples_split': 10,
+ 'n_estimators': 80}
 
  First model FULL TEST
 Predicted    0    1    2    3    4
 Actual                            
-0          357   10    3    0    0
+0          359    8    3    0    0
 1            1  349    1    0    0
-2            0    3  356    4    0
-3            0    1    2  351    1
-4            0    1    0    3  117
+2            0    2  357    4    0
+3            0    0    3  351    1
+4            0    1    0    1  119
 
  First model  TEST WITH VALIDATION ONLY
 Predicted   0   1   2   3   4
 Actual                       
 0          52   6   2   0   0
 1           0  60   0   0   0
-2           0   2  55   3   0
+2           0   2  56   2   0
 3           0   0   2  57   1
-4           0   1   0   3  16
-{'test2_acc': 0.9230769230769231,
- 'test2_kappa': 0.9012908124525436,
- 'test_acc': 0.9807692307692307,
- 'test_kappa': 0.9753762229020069}
+4           0   1   0   1  18
+{'test2_acc': 0.9346153846153846,
+ 'test2_kappa': 0.9162244124336618,
+ 'test_acc': 0.9839743589743589,
+ 'test_kappa': 0.9794845681869829}
 **********************************************************************
 Final model trained on full dataset
 
  Model trained on full set FULL TEST
 Predicted    0    1    2    3    4
 Actual                            
-0          370    0    0    0    0
+0          369    1    0    0    0
 1            0  351    0    0    0
 2            0    0  362    1    0
 3            0    0    0  355    0
-4            0    1    0    0  120
+4            0    0    0    0  121
 
  Model trained on full set  TEST WITH VALIDATION ONLY
 Predicted   0   1   2   3   4
@@ -70,14 +74,14 @@ Actual
 1           0  60   0   0   0
 2           0   0  59   1   0
 3           0   0   0  60   0
-4           0   1   0   0  19
-{'test2_acc': 0.9923076923076923,
- 'test2_kappa': 0.9901440485216073,
+4           0   0   0   0  20
+{'test2_acc': 0.9961538461538462,
+ 'test2_kappa': 0.9950757575757576,
  'test_acc': 0.9987179487179487,
- 'test_kappa': 0.998358622126405}
+ 'test_kappa': 0.9983588371098491}
 Performing LATITUDE_rand8 randomized search...
 Number of iterations: 8
-Randomized search time: 5.020455181598663 min
+Randomized search time: 5.210890555381775 min
 LATITUDE_rand8 randomized search results ************************
 Cross Validation Scores: [-16.5890949  -13.64343123 -12.21317729 -12.10666573 -12.62724862
  -11.61849438 -13.81905214 -11.9750996 ]
@@ -91,12 +95,12 @@ objective: 'reg:linear'
 **********************************************************************
 Performing LATITUDE_rand8 final fit...
 Number of iterations: 8
-Final fit time: 0.44890095392862955 min
+Final fit time: 0.5062159617741903 min
 Final LATITUDE_rand8 model results *************************************
 {'test2_mae': 1.6407695568954714, 'test_mae': 1.5485990960312148}
 Performing LONGITUDE_rand8 randomized search...
 Number of iterations: 8
-Randomized search time: 7.252645214398702 min
+Randomized search time: 7.442877825101217 min
 LONGITUDE_rand8 randomized search results ************************
 Cross Validation Scores: [-25.99360119 -18.35987004 -18.31887642 -18.12268417 -19.80446631
  -18.55902918 -23.78786419 -19.51274149]
@@ -110,6 +114,6 @@ objective: 'reg:linear'
 **********************************************************************
 Performing LONGITUDE_rand8 final fit...
 Number of iterations: 8
-Final fit time: 1.263571528593699 min
+Final fit time: 1.2961716095606486 min
 Final LONGITUDE_rand8 model results *************************************
 {'test2_mae': 0.03771169198231431, 'test_mae': 0.2794614458093514}

@@ -223,8 +223,8 @@ acc_report(rf_rscv_final, 'Model trained on full set', False,
 # Save model
 model_name = 'rf_rscv_' + sample
 
-joblib.dump(rf_rscv1, 'models/' + model_name + '_RSCV.sav')
-joblib.dump(rf_rscv_final, 'models/' + model_name + '_final.sav')
+joblib.dump(rf_rscv1, 'models/floor_rand9_' + model_name + '.sav')
+joblib.dump(rf_rscv_final, 'models/floor_rand9' + model_name + '_final.sav')
 
 
 # %% Final Floor prediction ---------------------------------------------------
@@ -321,8 +321,6 @@ def lat_long_reg(target, tag, model_stop_pair,
     df_pred[target] = xgb_rscv_final.predict(X_pred_final)
     df_pred  = df_pred.rename(columns = {target: target + '_' + model_name + '_final.sav'})
     
-    # Save csv before other predictions are ready
-#    df_pred.to_csv('predictions/mvp_autotune_' + model_name +'.csv')
     
     return(df_pred)
 #    return(rscv_best_result, final_result)
