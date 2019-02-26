@@ -150,7 +150,7 @@ if sample == 'all_train':
     train_final = pd.concat([df_tr, df_val])
 
 
-#  X for test/train for Floor, Latitude, and Longitude models ---------------
+# %% X for test/train for Floor, Latitude, and Longitude models ---------------
     
 # Set up x for all predictions
 X_train = train[wap_names]
@@ -242,13 +242,19 @@ bld_model, bld_model_final = rf_bld_flr(target='BUILDINGID',
                                         save_model=True)
     
 # %% Add BUILDINGID to predictors
+
+def add_predictor(X_df, new_col_name, model):
+    X_df[new_col_name] = model.predict(X_df)
+    return(X_df)
+
+X_train = add_predictor(X_train, 'bld_pred', bld_model)   
+X_test = add_predictor(X_test, 'bld_pred', bld_model)
+X_test2 = add_predictor(X_test2, 'bld_pred', bld_model)
+X_train_final = add_predictor(X_train_final, 'bld_pred', bld_model)
+
+# Use the final model to predict final building
+X_pred_final = add_predictor(X_pred_final, 'bld_pred', bld_model_final)
  
-# Set up x for all predictions
-X_train.loc[:,'bld_pred'] = bld_model.predict(X_train)
-X_test.loc[:, 'bld_pred'] = bld_model.predict(X_test)
-X_test2.loc[:, 'bld_pred'] = bld_model.predict(X_test2)
-X_train_final.loc[:, 'bld_pred'] = bld_model.predict(X_train_final)
-X_pred_final.loc[:, 'bld_pred'] = bld_model.predict(X_pred_final)
 
 # %% Floor prediction ---------------------------------------------------------
 flr_model, flr_model_final = rf_bld_flr(target='FLOOR', 
