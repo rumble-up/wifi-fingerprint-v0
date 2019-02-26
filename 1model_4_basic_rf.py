@@ -15,9 +15,11 @@ Created on Feb 22 2019
 @author: Laura Stupin
 
 """
-# %% Assumptions  --------------------------------------------------------------------
+# %% Run all models parameters  --------------------------------------------------------------------
 
 rand = 42
+n_jobs = 3
+
 
 
 # Setup --------------------------------------------------------------------
@@ -235,10 +237,10 @@ def rf_bld_flr(target, rand_search, n_jobs, save_model):
     return(rf_rscv, rf_rscv_final)
 # %% Building prediction ---------------------------------------------------------
 
-
+# 100% accuracy when rand_search=3
 bld_model, bld_model_final = rf_bld_flr(target='BUILDINGID', 
                                         rand_search=3, 
-                                        n_jobs=2, 
+                                        n_jobs=n_jobs, 
                                         save_model=True)
     
 # %% Add BUILDINGID to predictors ---------------------------------------------
@@ -260,8 +262,8 @@ X_pred_final = add_predictor(X_pred_final, new_col_name, bld_model_final)
 
 # %% Floor prediction ---------------------------------------------------------
 flr_model, flr_model_final = rf_bld_flr(target='FLOOR', 
-                                    rand_search=3, 
-                                    n_jobs=2, 
+                                    rand_search=6, 
+                                    n_jobs=n_jobs, 
                                     save_model=True)
 
 # %% Add FLOOR to predictors
@@ -336,28 +338,28 @@ def rf_lon_lat(target, rand_search, n_jobs, save_model):
     df_pred[target] = rf_rscv_final.predict(X_pred_final)
 #    df_pred  = df_pred.rename(columns = {'FLOOR': 'FLOOR_' + model_name + '_final.sav'})
 
-    return(rf_rscv, rf_rscv_final)
+    return(rf_rscv, rf_rscv_final, model_name)
 
 # %% Predict LONGITUDE --------------------------------------------------------
 
-lon_lat_rand_search = 3
+lon_lat_rand_search = 9
 
-lon_model, lon_model_final = rf_lon_lat(target='LONGITUDE', 
+lon_model, lon_model_final, model_name = rf_lon_lat(target='LONGITUDE', 
                                     rand_search=lon_lat_rand_search, 
-                                    n_jobs=3, 
+                                    n_jobs=n_jobs, 
                                     save_model=True)
 
 
 # %% Predict LATITUDE --------------------------------------------------------
-lat_model, lat_model_final = rf_lon_lat(target='LATITUDE', 
+lat_model, lat_model_final, model_name = rf_lon_lat(target='LATITUDE', 
                                     rand_search=lon_lat_rand_search, 
-                                    n_jobs=3, 
+                                    n_jobs=n_jobs, 
                                     save_model=True)
 
 # %% Export all predictions to csv --------------------------------------------
 
 # Export all predictions to csv
-df_pred.to_csv('predictions/RF_'+ sample +'_rand' + str(lon_lat_rand_search) + '.csv', index=False)
+df_pred.to_csv('predictions/'+ model_name +'.csv', index=False)
 
 
 # %% Old Experiments Below ----------------------------------------------------
