@@ -357,7 +357,7 @@ lat_model, lat_model_final = rf_lon_lat(target='LATITUDE',
 # %% Export all predictions to csv --------------------------------------------
 
 # Export all predictions to csv
-df_pred.to_csv('predictions/RF_autotune_rand' + str(lon_lat_rand_search) + '.csv', index=False)
+df_pred.to_csv('predictions/RF_'+ sample +'_rand' + str(lon_lat_rand_search) + '.csv', index=False)
 
 
 # %% Old Experiments Below ----------------------------------------------------
