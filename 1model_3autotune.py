@@ -312,7 +312,87 @@ joblib.dump(rf_rscv1, 'models/' + model_name + '.sav')
 joblib.dump(rf_rscv_final, 'models/' + model_name + '_final.sav')
 
 
-# %% Longitude XGB model ------------------------------------------------------
+# %% Lat/Long Regression Function --------------------------------------------
+
+def lat_long_reg(target, tag, n_iter_search, n_jobs, xgb_verbose,
+                 X_train, 
+                 X_test, 
+                 X_test2, 
+                 X_train_final, 
+                 X_pred_final):
+
+    # Set the target variables for LATITUDE
+    y_train, y_test, y_test2, y_train_final = set_y('LATITUDE')
+
+    reg = xgb.XGBRegressor()
+
+
+    random_grid = {'objective': ['reg:linear'],
+#               'silent': [True],
+               'verbose_eval': [100]
+               'n_estimators': [350],       #n_estimators is equivalent to num_rounds in alternative syntax
+               'max_depth': [3, 7, 13, 16],
+               'learning_rate': [0.05, 0.1, 0.15, 0.2]}
+
+    fit_params = {'eval_metric': 'mae',
+              'early_stopping_rounds': 10,
+              'eval_set': [(X_test2, y_test2),]}
+
+    xgb_rscv = RandomizedSearchCV(reg, random_grid,
+                              n_iter=n_iter_search,
+                              n_jobs=n_jobs,
+                              verbose=0,
+                              cv=5,
+                              fit_params=fit_params,
+                              scoring='neg_mean_absolute_error',
+                              random_state=rand)
+
+    print("Performing", target, tag, "randomized search...")
+    print("Number of iterations:", n_iter_search)
+    search_time_start = time.time()
+    xgb_rscv = xgb_rscv.fit(X_train, y_train)
+    print("Randomized search time:", (time.time() - search_time_start)/60, 'min')
+
+
+    print(target, tag, "randomized search results ************************")
+    mae_report(xgb_rscv, True, X_test, y_test, X_test2, y_test2)
+
+    # %% Final LATITUDE/LONGITUDE model --------------------------------------------------
+
+    # Take best model, fit with all available data
+    xgb_rscv_final = xgb_rscv.best_estimator_
+    
+    xgb_rscv_final= xgb_rscv_final.fit(X_train_final, y_train_final,
+            eval_set=[(X_train_final, y_train_final), (X_test2, y_test2)],
+            eval_metric='mae',
+            early_stopping_rounds=10,
+            verbose=xgb_verbose)
+
+    print('Final', target, tag, 'model results *************************************')
+    mae_report(reg_lat_rscv_final, False, X_test, y_test, X_test2, y_test2)
+
+    # %% Save LATITUDE/LONGITUDE model ------------------------------------------------------
+             # lat or lon  
+    model_name = target[0:3].lower() +'_'+ tag + '_xgb_rscv_' + sample 
+
+    joblib.dump(rf_rscv1, 'models/' + model_name + '.sav')
+    joblib.dump(rf_rscv_final, 'models/' + model_name + '_final.sav')
+
+
+    # %% Final LATITUDE/LONGITUDE prediction ---------------------------------------------------
+
+    # Be very careful changing this!!!
+    df_pred[target] = xgb_rscv_final.predict(X_pred_final)
+    df_pred  = df_pred.rename(columns = {target: target + '_' + model_name + '_final.sav'})
+    
+    # Save csv before other predictions are ready
+    df_pred.to_csv('predictions/mvp_autotune.csv')
+    
+    
+# %% Latitude test ---------------------------------------------------
+
+
+# %% Old Longitude XGB model ------------------------------------------------------
 
 # Set the target variables for LATITUDE
 y_train, y_test, y_test2, y_train_final = set_y('LONGITUDE')
