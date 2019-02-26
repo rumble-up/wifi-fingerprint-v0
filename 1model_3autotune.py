@@ -233,87 +233,7 @@ df_pred['FLOOR'] = rf_rscv_final.predict(X_pred_final)
 df_pred  = df_pred.rename(columns = {'FLOOR': 'FLOOR_' + model_name + '_final.sav'})
 
 # Save csv before other predictions are ready
-df_pred.to_csv('predictions/mvp_autotune_overfit.csv')
-
-
-# %% Latitude XGB Model --------------------------------------------
-
-# https://gist.github.com/wrwr/3f6b66bf4ee01bf48be965f60d14454d
-
-# Set the target variables for LATITUDE
-y_train, y_test, y_test2, y_train_final = set_y('LATITUDE')
-
-reg = xgb.XGBRegressor()
-
-        
-n_iter_search = 1
-random_grid = {'objective': ['reg:linear'],
-#               'silent': [True],
-               'verbose_eval': [100]
-               'n_estimators': [350],       #n_estimators is equivalent to num_rounds in alternative syntax
-               'max_depth': [3, 7, 13, 16],
-               'learning_rate': [0.05, 0.1, 0.15, 0.2]}
-
-fit_params = {'eval_metric': 'mae',
-              'early_stopping_rounds': 10,
-              'eval_set': [(X_test2, y_test2),]}
-
-reg_lat_rscv = RandomizedSearchCV(reg, random_grid,
-                              n_iter=n_iter_search,
-                              n_jobs=2,
-                              verbose=0,
-                              cv=5,
-                              fit_params=fit_params,
-                              scoring='neg_mean_absolute_error',
-                              random_state=rand)
-
-print("Performing LATITUDE randomized search...")
-print("Number of iterations:", n_iter_search)
-search_time_start = time.time()
-reg_lat_rscv = reg_lat_rscv.fit(X_train, y_train)
-print("Randomized search time:", (time.time() - search_time_start)/60, 'min')
-
-
-print("LATITUDE randomized search results ************************")
-mae_report(reg_lat_rscv, True, X_test, y_test, X_test2, y_test2)
-
-# %% Final LATITUDE model --------------------------------------------------
-
-# Take best model, fit with all available data
-reg_lat_rscv_final = reg_lat_rscv.best_estimator_
-
-
-reg_lat_rscv.fit(X_train_final, y_train_final)
-
-reg_lat_rscv_final = reg_lat_rscv_final.fit(X_train_final, y_train_final,
-        eval_set=[(X_train_final, y_train_final), (X_test2, y_test2)],
-        eval_metric='mae',
-        early_stopping_rounds=10,
-        verbose=False)
-
-print('Final LATITUDE model results *************************************")
-mae_report(reg_lat_rscv_final, False, X_test, y_test, X_test2, y_test2)
-
-
-# %% Final LATITUDE prediction ---------------------------------------------------
-
-# Be very careful changing this!!!
-df_pred['LATITUDE'] = reg_lat_rscv_final.predict(X_pred_final)
-df_pred  = df_pred.rename(columns = {'LATITUDE': 'LATITUDE_' + model_name + '_final.sav'})
-
-# Save csv before other predictions are ready
-df_pred.to_csv('predictions/mvp_autotune.csv')
-
-
-print('**********************************************************************')
-print('Final model trained on full dataset')
-mae_report(rf_rscv_final, False, X_test, y_test, X_test2, y_test2)
-
-# %% Save LATITUDE model ------------------------------------------------------
-model_name = 'lat_xgb_rscv_' + sample
-
-joblib.dump(rf_rscv1, 'models/' + model_name + '.sav')
-joblib.dump(rf_rscv_final, 'models/' + model_name + '_final.sav')
+#df_pred.to_csv('predictions/mvp_autotune_overfit.csv')
 
 
 # %% Lat/Long Regression Function --------------------------------------------
@@ -409,7 +329,7 @@ def lat_long_reg(target, tag, model_stop_pair,
 #    return(rscv_best_result, final_result)
 
 # %% Set parameters for both LAT/LONG predictions -----------------------------
-tag = 'rand3'
+tag = 'rand1'
 
 random_search = 1
 num_rounds = 500
@@ -446,6 +366,9 @@ df_pred = lat_long_reg(target=target, tag=tag,
              n_jobs=n_jobs, 
              xgb_verbose=xgb_verbose, df_pred=df_pred,
              save_model=save_model)
+
+# Export all predictions to csv
+df_pred.to_csv('predictions/mvp_autotune_rand1.csv')
 
 # %% Plot learning curve ------------------------------------------------------
 
@@ -509,43 +432,7 @@ layout = go.Layout(
 
 fig = go.Figure(data=data, layout=layout)
 plot(fig)
-# %% Old Longitude XGB model ------------------------------------------------------
 
-# Set the target variables for LATITUDE
-y_train, y_test, y_test2, y_train_final = set_y('LONGITUDE')
-
-num_round = 450
-param = {'objective':'reg:linear',
-         'max_depth':7, 
-         'learning_rate': 0.3,
-         'gamma':5,
-         'early_stopping_rounds':10}
-
-# Tougher test set
-bst_lon = xgb_fit(X_train, y_train, X_test2, y_test2, param)
-#Easier test set
-bst_lon = xgb_fit(X_train, y_train, X_test, y_test, param)    
-
-
-# Make final prediction
-bst_final_lon = xgb_fit(X_train_final, y_train_final, X_test2, y_test2, param)
-
-model_name = 'lon_xbg_tough'
-
-bst_lon.save_model('models/'+ model_name + '_train.model')
-bst_final.save_model('models/'+ model_name + '_final.model')
-
-dtest_final = xgb.DMatrix(X_pred_final)
-df_pred['LONGITUDE'] = bst_final_lon.predict(dtest_final)
-df_pred  = df_pred.rename(columns = {'LONGITUDE': 'LONGITUDE_' + model_name + '_final.model'})
-
-# Calculate errors/residuals on toughest test set
-dtest2 = xgb.DMatrix(X_test2)
-mvp1_lon = bst_lon.predict(dtest2)
-errorLon = mvp1_lon - y_test2
-
-# %% Save predictions to CSV --------------------------------------------------
-df_pred.to_csv('predictions/marshmellow_all2.csv')
 
 # %% Visualize errors ---------------------------------------------------------
 
