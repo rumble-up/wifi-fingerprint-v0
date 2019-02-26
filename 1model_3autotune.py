@@ -319,7 +319,7 @@ joblib.dump(rf_rscv_final, 'models/' + model_name + '_final.sav')
 # %% Lat/Long Regression Function --------------------------------------------
 
 def lat_long_reg(target, tag, model_stop_pair, 
-                 n_iter_search, num_rounds, n_jobs, xgb_verbose,
+                 random_search, num_rounds, n_jobs, xgb_verbose,
                  df_pred, save_model
                  ):
 
@@ -339,7 +339,7 @@ def lat_long_reg(target, tag, model_stop_pair,
 #              'eval_set': [(X_test2, y_test2),]}
 
     xgb_rscv = RandomizedSearchCV(reg, random_grid,
-                              n_iter=n_iter_search,
+                              n_iter=random_search,
                               n_jobs=n_jobs,
                               verbose=0,
                               cv=5,
@@ -348,7 +348,7 @@ def lat_long_reg(target, tag, model_stop_pair,
                               random_state=rand)
 
     print("Performing", target + '_' + tag, "randomized search...")
-    print("Number of iterations:", n_iter_search)
+    print("Number of iterations:", random_search)
     search_time_start = time.time()
     xgb_rscv = xgb_rscv.fit(X_train, y_train,
                             # Last pair from eval_set is used to stop model early
@@ -372,11 +372,11 @@ def lat_long_reg(target, tag, model_stop_pair,
     xgb_rscv_final = xgb_rscv.best_estimator_
     
     print("Performing", target + '_' + tag, "final fit...")
-    print("Number of iterations:", n_iter_search)
+    print("Number of iterations:", random_search)
     
     final_fit_time_start = time.time()
     xgb_rscv_final= xgb_rscv_final.fit(X_train_final, y_train_final,
-            eval_set=[(X_train_final, y_train_final), (X_test, y_test), model_stop_pair],
+            eval_set=[(X_train_final, y_train_final), model_stop_pair],
             eval_metric='mae',
             early_stopping_rounds=10,
             verbose=xgb_verbose)
@@ -405,23 +405,47 @@ def lat_long_reg(target, tag, model_stop_pair,
     # Save csv before other predictions are ready
     df_pred.to_csv('predictions/mvp_autotune_' + model_name +'.csv')
     
-    return(rscv_best_result, final_result)
-# %% Latitude Predictions -----------------------------------------------------------
+    return(df_pred)
+#    return(rscv_best_result, final_result)
+
+# %% Set parameters for both LAT/LONG predictions -----------------------------
+tag = 'rand3'
+
+random_search = 1
+num_rounds = 500
+# Number of cores to use on computer
+n_jobs = 2 
+xgb_verbose = False
+save_model = False
+
+# LATITUDE Predictions -----------------------------------------------------------
 target = 'LATITUDE'
 
 # Set the target variables to target
 y_train, y_test, y_test2, y_train_final = set_y(target)
 
-result_rscv_best, result_final = lat_long_reg(target=target, 
-                                             tag='test', 
-                                             # Lack of improvement in this pair stops model training
-                                             model_stop_pair = (X_test2, y_test2),
-                                             n_iter_search=3,
-                                             num_rounds=500,
-                                             n_jobs=2, 
-                                             xgb_verbose=True,
-                                             df_pred=df_pred,
-                                             save_model=True)
+df_pred = lat_long_reg(target=target, tag=tag, 
+             # Lack of improvement in this pair stops model training
+             model_stop_pair=(X_test2, y_test2),
+             random_search=random_search, num_rounds=num_rounds,
+             n_jobs=n_jobs, 
+             xgb_verbose=xgb_verbose, df_pred=df_pred,
+             save_model=save_model)
+
+
+# LONGITUDE Predictions -----------------------------------------------------------
+target = 'LONGITUDE'
+
+# Set the target variables to target
+y_train, y_test, y_test2, y_train_final = set_y(target)
+
+df_pred = lat_long_reg(target=target, tag=tag, 
+             # Lack of improvement in this pair stops model training
+             model_stop_pair=(X_test2, y_test2),
+             random_search=random_search, num_rounds=num_rounds,
+             n_jobs=n_jobs, 
+             xgb_verbose=xgb_verbose, df_pred=df_pred,
+             save_model=save_model)
 
 # %% Plot learning curve ------------------------------------------------------
 
