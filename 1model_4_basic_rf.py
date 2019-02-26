@@ -20,7 +20,7 @@ Created on Feb 22 2019
 rand = 42
 n_jobs = 3
 lon_lat_rand_search = 8
-floor_rand_seach = 6
+floor_rand_search = 6
 
 
 # Setup --------------------------------------------------------------------
@@ -309,11 +309,8 @@ def rf_lon_lat(target, rand_search, n_jobs, save_model):
     print("Number of iterations:", rand_search)
     search_time_start = time.time()
     rf_rscv = rf_rscv.fit(X_train, y_train)
-    print("Randomized search time:", time.time() - search_time_start)
-
-
-    # Report Floor Model -------------------------------------------------------
-    
+    print("Randomized search time minutes:", (time.time() - search_time_start)/60)
+ 
     print('**********************************************************************')
     print(target, 'model complete. \n')
     
@@ -333,7 +330,7 @@ def rf_lon_lat(target, rand_search, n_jobs, save_model):
         joblib.dump(rf_rscv, 'models/' + model_name + '.sav')
         joblib.dump(rf_rscv_final, 'models/' + model_name + '_final.sav')
 
-    # Final Floor prediction ---------------------------------------------------
+    # Final TARGET prediction ---------------------------------------------------
 
     # Be very careful changing this!!!
     df_pred[target] = rf_rscv_final.predict(X_pred_final)
