@@ -31,7 +31,7 @@ import pandas as pd
 import xgboost as xgb
 from pprint import pprint
 import time
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import cohen_kappa_score, mean_absolute_error
 from sklearn.externals import joblib
@@ -277,7 +277,90 @@ X_train_final = add_predictor(X_train_final, new_col_name, model)
 # Use the final model to predict final building
 X_pred_final = add_predictor(X_pred_final, new_col_name, 
                              flr_model_final)
- 
+
+# %% Longitude/Latitude Random Forest Regressor Function -----------------------
+
+def rf_lon_lat(target, rand_search, n_jobs, save_model):
+    
+    
+    # Set the target variables for FLOOR
+    y_train, y_test, y_test2, y_train_final = set_y(target)
+
+    rf = RandomForestRegressor()
+
+    random_grid = {"n_estimators": [80, 100, 120],
+                  "max_features": ['auto', 'sqrt'],
+                  "max_depth": [10, 50, 100, None],
+                  "min_samples_leaf": [1, 2, 4],
+                  "min_samples_split":[2, 5, 10],
+                  "bootstrap": [True, False]}
+    #              "criterion": ["gini", "entropy"]}
+
+    rf_rscv = RandomizedSearchCV(rf, param_distributions=random_grid,
+                             n_iter=rand_search, 
+                             cv=5,
+                             n_jobs = n_jobs,
+                             scoring = 'explained_variance')
+
+    print("Performing randomized search for", target + "...")
+    print("Number of iterations:", rand_search)
+    search_time_start = time.time()
+    rf_rscv = rf_rscv.fit(X_train, y_train)
+    print("Randomized search time:", time.time() - search_time_start)
+
+
+    # Report Floor Model -------------------------------------------------------
+    
+    print('**********************************************************************')
+    print(target, 'model complete. \n')
+    
+    # Choose the best estimator from Random Search as final model
+    rf_rscv_final = rf_rscv.best_estimator_
+    
+    # Take best model, fit with all available data
+    rf_rscv_final = rf_rscv_final.fit(X_train_final, y_train_final)
+
+    print('**********************************************************************')
+    print('Final model trained on full dataset')
+
+    # Save model
+    model_name = target + '_rand'+ str(rand_search) + '_rf_rscv_' + sample
+    
+    if save_model:
+        joblib.dump(rf_rscv, 'models/' + model_name + '.sav')
+        joblib.dump(rf_rscv_final, 'models/' + model_name + '_final.sav')
+
+    # Final Floor prediction ---------------------------------------------------
+
+    # Be very careful changing this!!!
+    df_pred[target] = rf_rscv_final.predict(X_pred_final)
+#    df_pred  = df_pred.rename(columns = {'FLOOR': 'FLOOR_' + model_name + '_final.sav'})
+
+    return(rf_rscv, rf_rscv_final)
+
+# %% Predict LONGITUDE --------------------------------------------------------
+
+lon_lat_rand_search = 3
+
+lon_model, lon_model_final = rf_lon_lat(target='LONGITUDE', 
+                                    rand_search=lon_lat_rand_search, 
+                                    n_jobs=3, 
+                                    save_model=True)
+
+
+# %% Predict LATITUDE --------------------------------------------------------
+lat_model, lat_model_final = rf_lon_lat(target='LATITUDE', 
+                                    rand_search=lon_lat_rand_search, 
+                                    n_jobs=3, 
+                                    save_model=True)
+
+# %% Export all predictions to csv --------------------------------------------
+
+# Export all predictions to csv
+df_pred.to_csv('predictions/RF_autotune_rand' + str(lon_lat_rand_search) + '.csv', index=False)
+
+
+
 # %% Old Code below -----------------------------------------------------------
 # ****************************************************************************
 # ============================================================================
