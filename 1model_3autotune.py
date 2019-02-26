@@ -242,16 +242,17 @@ y_train, y_test, y_test2, y_train_final = set_y('LATITUDE')
 reg = xgb.XGBRegressor()
 
         
-n_iter_search = 8
+n_iter_search = 1
 random_grid = {'objective': ['reg:linear'],
-               'silent': [True],
+#               'silent': [True],
+               'verbose_eval': [100]
                'n_estimators': [350],       #n_estimators is equivalent to num_rounds in alternative syntax
                'max_depth': [3, 7, 13, 16],
-               'learning_rate': [0.05, 0.1, 0.15]}
+               'learning_rate': [0.05, 0.1, 0.15, 0.2]}
 
 fit_params = {'eval_metric': 'mae',
               'early_stopping_rounds': 10,
-              'eval_set': [(X_test2, y_test2)]}
+              'eval_set': [(X_test2, y_test2),]}
 
 reg_lat_rscv = RandomizedSearchCV(reg, random_grid,
                               n_iter=n_iter_search,
@@ -272,69 +273,43 @@ print("Randomized search time:", (time.time() - search_time_start)/60, 'min')
 print("LATITUDE randomized search results ************************")
 mae_report(reg_lat_rscv, True, X_test, y_test, X_test2, y_test2)
 
-# %% Final LATITUDE prediction --------------------------------------------------
+# %% Final LATITUDE model --------------------------------------------------
+
+# Take best model, fit with all available data
+reg_lat_rscv_final = reg_lat_rscv.best_estimator_
 
 
-# %% Leftovers from old Latitude
+reg_lat_rscv.fit(X_train_final, y_train_final)
 
-# Define function to try out different test/train splits
-def xgb_fit(X_train, y_train, X_test, y_test, param):
-    
-    # This is the required format for pure xgb without sklearn API
-    dtrain = xgb.DMatrix(X_train, label=y_train)
-    dtest = xgb.DMatrix(X_test, label=y_test)
-    evallist = [(dtest, 'eval'), (dtrain, 'train')]
-    
-    bst = xgb.train(param, dtrain, num_round, evallist)
-    
-    xgbpred = bst.predict(dtest)
-    print('MAE:', mean_absolute_error(xgbpred, y_test))
-      
-    return(bst)
+reg_lat_rscv_final = reg_lat_rscv_final.fit(X_train_final, y_train_final,
+        eval_set=[(X_train_final, y_train_final), (X_test2, y_test2)],
+        eval_metric='mae',
+        early_stopping_rounds=10,
+        verbose=False)
 
-# 400 was plenty
-num_round = 250
-param = {'objective':'reg:linear',
-         'max_depth':13, 
-         'learning_rate': 0.24,
-#         'n_estimators':100,
-         'early_stopping_rounds':10}
-    
-# Tougher test set
-bst = xgb_fit(X_train, y_train, X_test2, y_test2, param)    
-
-bst = xgb_fit(X_train, y_train, X_test, y_test, param)
+print('Final LATITUDE model results *************************************")
+mae_report(reg_lat_rscv_final, False, X_test, y_test, X_test2, y_test2)
 
 
+# %% Final LATITUDE prediction ---------------------------------------------------
 
-bst_final = xgb_fit(X_train_final, y_train_final, X_test2, y_test2, param)
+# Be very careful changing this!!!
+df_pred['LATITUDE'] = reg_lat_rscv_final.predict(X_pred_final)
+df_pred  = df_pred.rename(columns = {'LATITUDE': 'LATITUDE_' + model_name + '_final.sav'})
 
-model_name = 'lat_xgb_tough'
-
-bst.save_model('models/'+ model_name + '_train.model')
-bst_final.save_model('models/'+ model_name + '_final.model')
-
-# Make final prediction
-dtest_final = xgb.DMatrix(X_pred_final)
-df_pred['LATITUDE'] = bst_final.predict(dtest_final)
-df_pred  = df_pred.rename(columns = {'LATITUDE': 'LATITUDE_' + model_name + '_final.model'})
-df_pred.to_csv('predictions/marshmellow_latitude.csv')
-
-dtest2 = xgb.DMatrix(X_test2)
-mvp1_lat = bst.predict(dtest2)
-errorLat = mvp1_lat - y_test2
+# Save csv before other predictions are ready
+df_pred.to_csv('predictions/mvp_autotune.csv')
 
 
-trace1 = go.Scatter(
-        x=y_test2,
-        y=errorLat,
-        mode='markers'
-)
+print('**********************************************************************')
+print('Final model trained on full dataset')
+mae_report(rf_rscv_final, False, X_test, y_test, X_test2, y_test2)
 
-plot([trace1])
-#
-#
-#print('The Latitude MAE is:', abs(xgbpredLat - y_test).mean())
+# %% Save LATITUDE model ------------------------------------------------------
+model_name = 'lat_xgb_rscv_' + sample
+
+joblib.dump(rf_rscv1, 'models/' + model_name + '.sav')
+joblib.dump(rf_rscv_final, 'models/' + model_name + '_final.sav')
 
 
 # %% Longitude XGB model ------------------------------------------------------
