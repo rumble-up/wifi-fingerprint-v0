@@ -105,7 +105,7 @@ df_pred = pd.DataFrame(
 
 # Prepare test/train -------------------------------------------------------
 
-sample = '5_1_train_val'  # or 'all_train'
+sample = 'all_train'  # '5_1_train_val' or 'all_train'
 
 # less_train has 400*13 = 5200 train samples
 #                1110 all validation, so 5:1 weight train to validation
@@ -365,7 +365,8 @@ df_pred = lat_long_reg(target=target, tag=tag,
              save_model=save_model)
 
 # Export all predictions to csv
-df_pred.to_csv('predictions/mvp_autotune_' + tag + '.csv')
+df_pred.to_csv('predictions/mvp_autotune_' + tag + '.csv', index=False)
+
 
 
 
