@@ -177,7 +177,7 @@ y_train, y_test, y_test2, y_train_final = set_y('FLOOR')
 rf = RandomForestClassifier()
 
 # PRINT MODEL DEFAULTS!
-pprint(rf.get_params())
+# pprint(rf.get_params())
 
 n_iter_search = 9
 random_grid = {"n_estimators": [80, 100, 120],
