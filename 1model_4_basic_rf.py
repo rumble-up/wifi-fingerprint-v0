@@ -15,11 +15,12 @@ Created on Feb 22 2019
 @author: Laura Stupin
 
 """
-# %% Run all models parameters  --------------------------------------------------------------------
+# %% Parameters for running models --------------------------------------------------------------------
 
 rand = 42
 n_jobs = 3
-
+lon_lat_rand_search = 8
+floor_rand_seach = 6
 
 
 # Setup --------------------------------------------------------------------
@@ -262,7 +263,7 @@ X_pred_final = add_predictor(X_pred_final, new_col_name, bld_model_final)
 
 # %% Floor prediction ---------------------------------------------------------
 flr_model, flr_model_final = rf_bld_flr(target='FLOOR', 
-                                    rand_search=6, 
+                                    rand_search=floor_rand_search, 
                                     n_jobs=n_jobs, 
                                     save_model=True)
 
@@ -378,7 +379,7 @@ X_pred_final = X_pred_final.drop(col_name, axis=1)
 
 # %% Predict LONGITUDE --------------------------------------------------------
 
-lon_lat_rand_search = 3
+
 
 lon_model, lon_model_final = rf_lon_lat(target='LONGITUDE', 
                                     rand_search=lon_lat_rand_search, 
