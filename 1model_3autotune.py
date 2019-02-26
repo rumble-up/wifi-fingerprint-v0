@@ -233,8 +233,6 @@ joblib.dump(rf_rscv_final, 'models/' + model_name + '_final.sav')
 df_pred['FLOOR'] = rf_rscv_final.predict(X_pred_final)
 df_pred  = df_pred.rename(columns = {'FLOOR': 'FLOOR_' + model_name + '_final.sav'})
 
-# Save csv before other predictions are ready
-#df_pred.to_csv('predictions/mvp_autotune_overfit.csv')
 
 
 # %% Lat/Long Regression Function --------------------------------------------
@@ -324,7 +322,7 @@ def lat_long_reg(target, tag, model_stop_pair,
     df_pred  = df_pred.rename(columns = {target: target + '_' + model_name + '_final.sav'})
     
     # Save csv before other predictions are ready
-    df_pred.to_csv('predictions/mvp_autotune_' + model_name +'.csv')
+#    df_pred.to_csv('predictions/mvp_autotune_' + model_name +'.csv')
     
     return(df_pred)
 #    return(rscv_best_result, final_result)
@@ -337,7 +335,7 @@ num_rounds = 500
 # Number of cores to use on computer
 n_jobs = 2 
 xgb_verbose = False
-save_model = False
+save_model = True
 
 # LATITUDE Predictions -----------------------------------------------------------
 target = 'LATITUDE'
