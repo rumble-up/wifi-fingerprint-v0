@@ -360,6 +360,38 @@ lat_model, lat_model_final = rf_lon_lat(target='LATITUDE',
 df_pred.to_csv('predictions/RF_autotune_rand' + str(lon_lat_rand_search) + '.csv', index=False)
 
 
+# %% Remove floor as a predictor
+
+col_name = 'flr_pred'
+
+X_train = X_train.drop(col_name, axis=1)  
+X_test = X_test.drop(col_name, axis=1) 
+X_test2 = X_test2.drop(col_name, axis=1) 
+X_train_final = X_train_final.drop(col_name, axis=1) 
+
+X_pred_final = X_pred_final.drop(col_name, axis=1) 
+
+# %% Predict LONGITUDE --------------------------------------------------------
+
+lon_lat_rand_search = 3
+
+lon_model, lon_model_final = rf_lon_lat(target='LONGITUDE', 
+                                    rand_search=lon_lat_rand_search, 
+                                    n_jobs=3, 
+                                    save_model=True)
+
+
+# Predict LATITUDE --------------------------------------------------------
+lat_model, lat_model_final = rf_lon_lat(target='LATITUDE', 
+                                    rand_search=lon_lat_rand_search, 
+                                    n_jobs=3, 
+                                    save_model=True)
+
+# Export all predictions to csv --------------------------------------------
+
+# Export all predictions to csv
+df_pred.to_csv('predictions/RF_no_flr_pred_rand' + str(lon_lat_rand_search) + '.csv', index=False)
+
 
 # %% Old Code below -----------------------------------------------------------
 # ****************************************************************************
