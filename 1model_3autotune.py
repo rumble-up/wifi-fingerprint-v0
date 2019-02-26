@@ -3,7 +3,7 @@
 """
 
 Status: IN PROGRESS
-Purpose: Use raw signals to make model prediction
+Purpose: Use raw signals, autotune models
 
 Created on Feb 22 2019
 @author: Laura Stupin
@@ -15,7 +15,7 @@ rand = 42
 
 # Note: set iter_search for each Random below
 
-# %% Setup --------------------------------------------------------------------
+# Setup --------------------------------------------------------------------
 
 # Change working directory to the folder where script is stored.
 from os import chdir, getcwd
@@ -34,7 +34,7 @@ from sklearn.externals import joblib
 import plotly.graph_objs as go
 from plotly.offline import plot
 
-# %% Custom functions ----------------------------------------------------------------
+# Custom functions ----------------------------------------------------------------
 
 # Calculate and display error metrics for Random Forest Classification
 def rfc_pred(X_test, y_test, model):
@@ -84,7 +84,7 @@ def mae_report(model, is_search, X_test, y_test, X_test2, y_test2):
                )
              
     pprint(mae)
-# %% Load data -------------------------------------------------------
+# Load data -------------------------------------------------------
 
 df_all = pd.read_csv('data/processed/df.csv')
 df_tr = df_all[df_all['dataset'] == 'train']
@@ -98,7 +98,7 @@ df_pred = pd.DataFrame(
         index = range(0,len(df_test)),
         columns = ['FLOOR', 'LATITUDE', 'LONGITUDE'])
 
-# %% Prepare test/train -------------------------------------------------------
+# Prepare test/train -------------------------------------------------------
 
 sample = '5_1_train_val'  # or 'all_train'
 
@@ -146,7 +146,7 @@ if sample == 'all_train':
     train_final = pd.concat([df_tr, df_val])
 
 
-# %% X for test/train for Floor, Latitude, and Longitude models ---------------
+#  X for test/train for Floor, Latitude, and Longitude models ---------------
     
 # Set up x for all predictions
 X_train = train[wap_names]
@@ -162,7 +162,8 @@ X_pred_final = df_test[wap_names]
   
 #df_full = df_all[df_all['dataset'] != 'test']
 
-
+# ****************************************************************************
+# ============================================================================
 # %% Floor Random Forest Model --------------------------------------------
 
 # Set the target variables for FLOOR
@@ -193,7 +194,6 @@ print("Number of iterations:", n_iter_search)
 search_time_start = time.time()
 rf_rscv1 = rf_rscv.fit(X_train, y_train)
 print("Randomized search time:", time.time() - search_time_start)
-
 
 
 # %% Report Floor Model -------------------------------------------------------
@@ -314,12 +314,8 @@ joblib.dump(rf_rscv_final, 'models/' + model_name + '_final.sav')
 
 # %% Lat/Long Regression Function --------------------------------------------
 
-def lat_long_reg(target, tag, n_iter_search, n_jobs, xgb_verbose,
-#                 X_train, 
-#                 X_test, 
-#                 X_test2, 
-#                 X_train_final, 
-#                 X_pred_final
+def lat_long_reg(target, tag, n_iter_search, num_rounds, n_jobs, xgb_verbose,
+                 df_pred
                  ):
 
     # Set the target variables for LATITUDE
@@ -331,10 +327,11 @@ def lat_long_reg(target, tag, n_iter_search, n_jobs, xgb_verbose,
     random_grid = {'objective': ['reg:linear'],
 #               'silent': [True],
                'verbose_eval': [100],
-               'n_estimators': [350],       #n_estimators is equivalent to num_rounds in alternative syntax
+               'n_estimators': [num_rounds],       #n_estimators is equivalent to num_rounds in alternative syntax
                'max_depth': [3, 7, 13, 16],
                'learning_rate': [0.05, 0.1, 0.15, 0.2]}
-
+    
+#    This was the old method, but it's deprecated 
 #    fit_params = {'eval_metric': 'mae',
 #              'early_stopping_rounds': 10,
 #              'eval_set': [(X_test2, y_test2),]}
@@ -348,32 +345,39 @@ def lat_long_reg(target, tag, n_iter_search, n_jobs, xgb_verbose,
                               scoring='neg_mean_absolute_error',
                               random_state=rand)
 
-    print("Performing", target, tag, "randomized search...")
+    print("Performing", target + '_' + tag, "randomized search...")
     print("Number of iterations:", n_iter_search)
     search_time_start = time.time()
     xgb_rscv = xgb_rscv.fit(X_train, y_train,
                             early_stopping_rounds=10,
                             eval_metric='mae',
-                            eval_set = [(X_test2, y_test2),] )
+                            eval_set = [(X_test2, y_test2),],
+                            verbose=xgb_verbose)
     
     print("Randomized search time:", (time.time() - search_time_start)/60, 'min')
 
 
-    print(target, tag, "randomized search results ************************")
+    print(target + '_' + tag, "randomized search results ************************")
     mae_report(xgb_rscv, True, X_test, y_test, X_test2, y_test2)
+    print('**********************************************************************')
 
     # Final LATITUDE/LONGITUDE model --------------------------------------------------
 
     # Take best model, fit with all available data
     xgb_rscv_final = xgb_rscv.best_estimator_
     
+    print("Performing", target + '_' + tag, "final fit...")
+    print("Number of iterations:", n_iter_search)
+    
+    final_fit_time_start = time.time()
     xgb_rscv_final= xgb_rscv_final.fit(X_train_final, y_train_final,
             eval_set=[(X_train_final, y_train_final), (X_test2, y_test2)],
             eval_metric='mae',
             early_stopping_rounds=10,
             verbose=xgb_verbose)
-
-    print('Final', target, tag, 'model results *************************************')
+    
+    print("Final fit time:", (time.time() - final_fit_time_start)/60, 'min')
+    print('Final', target + '_' + tag, 'model results *************************************')
     mae_report(xgb_rscv_final, False, X_test, y_test, X_test2, y_test2)
 
     # Save LATITUDE/LONGITUDE model ------------------------------------------------------
@@ -395,11 +399,13 @@ def lat_long_reg(target, tag, n_iter_search, n_jobs, xgb_verbose,
     
     
 # %% Latitude test ---------------------------------------------------
-lat_long_reg(target='Latitude', 
+lat_long_reg(target='LATITUDE', 
              tag='test', 
-             n_iter_search=1,
+             n_iter_search=2,
+             num_rounds=400,
              n_jobs=2, 
-             xgb_verbose=True)
+             xgb_verbose=False,
+             df_pred=df_pred)
 
 
 # %% Old Longitude XGB model ------------------------------------------------------
