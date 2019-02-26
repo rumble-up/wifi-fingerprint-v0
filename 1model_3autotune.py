@@ -3,7 +3,9 @@
 """
 
 Status: IN PROGRESS
-Purpose: Use raw signals, autotune models
+Purpose: Predict Wifi location in test competition set
+    + Import pre-processed data from 0data.py, 
+    + Autotune models
 
 Future steps: 
     + CV evaluate on full data set before predicting unknown test
@@ -17,7 +19,6 @@ Created on Feb 22 2019
 
 rand = 42
 
-# Note: set iter_search for each Random below
 
 # Setup --------------------------------------------------------------------
 
@@ -282,7 +283,8 @@ def lat_long_reg(target, tag, model_stop_pair,
     mae_report(xgb_rscv, True, X_test, y_test, X_test2, y_test2)
     print('**********************************************************************')
     
-    rscv_best_result = xgb_rscv.best_estimator_.evals_result()
+    # Used for plotting learning curve
+#    rscv_best_result = xgb_rscv.best_estimator_.evals_result()
     
     # Final LATITUDE/LONGITUDE model --------------------------------------------------
 
@@ -299,7 +301,8 @@ def lat_long_reg(target, tag, model_stop_pair,
             early_stopping_rounds=10,
             verbose=xgb_verbose)
     
-    final_result = xgb_rscv_final.evals_result()
+    # Used for plotting learning curve
+#    final_result = xgb_rscv_final.evals_result()
     
     print("Final fit time:", (time.time() - final_fit_time_start)/60, 'min')
     print('Final', target + '_' + tag, 'model results *************************************')
@@ -327,9 +330,9 @@ def lat_long_reg(target, tag, model_stop_pair,
 #    return(rscv_best_result, final_result)
 
 # %% Set parameters for both LAT/LONG predictions -----------------------------
-tag = 'rand1'
+tag = 'rand8'
 
-random_search = 1
+random_search = 8
 num_rounds = 500
 # Number of cores to use on computer
 n_jobs = 2 
