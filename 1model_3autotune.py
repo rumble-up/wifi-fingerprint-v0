@@ -315,7 +315,7 @@ joblib.dump(rf_rscv_final, 'models/' + model_name + '_final.sav')
 # %% Lat/Long Regression Function --------------------------------------------
 
 def lat_long_reg(target, tag, n_iter_search, num_rounds, n_jobs, xgb_verbose,
-                 df_pred
+                 df_pred, save_model
                  ):
 
     # Set the target variables for LATITUDE
@@ -349,9 +349,9 @@ def lat_long_reg(target, tag, n_iter_search, num_rounds, n_jobs, xgb_verbose,
     print("Number of iterations:", n_iter_search)
     search_time_start = time.time()
     xgb_rscv = xgb_rscv.fit(X_train, y_train,
-                            early_stopping_rounds=10,
+                            eval_set = [(X_train, y_train), (X_test2, y_test2),]
                             eval_metric='mae',
-                            eval_set = [(X_test2, y_test2),],
+                            early_stopping_rounds=10,
                             verbose=xgb_verbose)
     
     print("Randomized search time:", (time.time() - search_time_start)/60, 'min')
@@ -383,9 +383,10 @@ def lat_long_reg(target, tag, n_iter_search, num_rounds, n_jobs, xgb_verbose,
     # Save LATITUDE/LONGITUDE model ------------------------------------------------------
              # lat or lon  
     model_name = target[0:3].lower() +'_'+ tag + '_xgb_rscv_' + sample 
-
-    joblib.dump(xgb_rscv, 'models/' + model_name + '.sav')
-    joblib.dump(xgb_rscv_final, 'models/' + model_name + '_final.sav')
+    
+    if save_model:
+        joblib.dump(xgb_rscv, 'models/' + model_name + '.sav')
+        joblib.dump(xgb_rscv_final, 'models/' + model_name + '_final.sav')
 
 
     # Final LATITUDE/LONGITUDE prediction ---------------------------------------------------
@@ -401,11 +402,12 @@ def lat_long_reg(target, tag, n_iter_search, num_rounds, n_jobs, xgb_verbose,
 # %% Latitude test ---------------------------------------------------
 lat_long_reg(target='LATITUDE', 
              tag='test', 
-             n_iter_search=2,
-             num_rounds=400,
+             n_iter_search=3,
+             num_rounds=500,
              n_jobs=2, 
-             xgb_verbose=False,
-             df_pred=df_pred)
+             xgb_verbose=True,
+             df_pred=df_pred,
+             save_model=False)
 
 
 # %% Old Longitude XGB model ------------------------------------------------------
