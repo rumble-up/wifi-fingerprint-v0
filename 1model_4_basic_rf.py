@@ -241,19 +241,21 @@ bld_model, bld_model_final = rf_bld_flr(target='BUILDINGID',
                                         n_jobs=2, 
                                         save_model=True)
     
-# %% Add BUILDINGID to predictors
+# %% Add BUILDINGID to predictors ---------------------------------------------
 
 def add_predictor(X_df, new_col_name, model):
     X_df[new_col_name] = model.predict(X_df)
     return(X_df)
 
-X_train = add_predictor(X_train, 'bld_pred', bld_model)   
-X_test = add_predictor(X_test, 'bld_pred', bld_model)
-X_test2 = add_predictor(X_test2, 'bld_pred', bld_model)
-X_train_final = add_predictor(X_train_final, 'bld_pred', bld_model)
+new_col_name = 'bld_pred'
+
+X_train = add_predictor(X_train, new_col_name, bld_model)   
+X_test = add_predictor(X_test, new_col_name, bld_model)
+X_test2 = add_predictor(X_test2, new_col_name, bld_model)
+X_train_final = add_predictor(X_train_final, new_col_name, bld_model)
 
 # Use the final model to predict final building
-X_pred_final = add_predictor(X_pred_final, 'bld_pred', bld_model_final)
+X_pred_final = add_predictor(X_pred_final, new_col_name, bld_model_final)
  
 
 # %% Floor prediction ---------------------------------------------------------
@@ -262,7 +264,20 @@ flr_model, flr_model_final = rf_bld_flr(target='FLOOR',
                                     n_jobs=2, 
                                     save_model=True)
 
+# %% Add FLOOR to predictors
 
+new_col_name = 'flr_pred'
+model = flr_model
+
+X_train = add_predictor(X_train, new_col_name, model)   
+X_test = add_predictor(X_test, new_col_name, model)
+X_test2 = add_predictor(X_test2, new_col_name, model)
+X_train_final = add_predictor(X_train_final, new_col_name, model)
+
+# Use the final model to predict final building
+X_pred_final = add_predictor(X_pred_final, new_col_name, 
+                             flr_model_final)
+ 
 # %% Old Code below -----------------------------------------------------------
 # ****************************************************************************
 # ============================================================================
