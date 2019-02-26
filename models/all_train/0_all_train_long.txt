@@ -1,0 +1,98 @@
+Performing randomized search for floor...
+Number of iterations: 9
+Randomized search time: 87.73086738586426
+**********************************************************************
+Floor model complete. 
+
+First model BEST PARAMETERS
+{'bootstrap': True,
+ 'max_depth': 100,
+ 'max_features': 'sqrt',
+ 'min_samples_leaf': 1,
+ 'min_samples_split': 2,
+ 'n_estimators': 80}
+
+ First model FULL TEST
+Predicted     0     1     2     3    4
+Actual                                
+0          1218    10     0     0    0
+1             5  1307     3     0    0
+2             1     0  1258     3    0
+3             0     0     3  1230    0
+4             0     0     0     1  411
+
+ First model  TEST WITH VALIDATION ONLY
+Predicted   0    1   2   3   4
+Actual                        
+0          24    4   0   0   0
+1           1  111   3   0   0
+2           0    0  59   3   0
+3           0    0   1  32   0
+4           0    0   0   1  11
+{'test2_acc': 0.948,
+ 'test2_kappa': 0.925027105584904,
+ 'test_acc': 0.9952293577981651,
+ 'test_kappa': 0.9938873805294564}
+**********************************************************************
+Final model trained on full dataset
+
+ Model trained on full set FULL TEST
+Predicted     0     1     2     3    4
+Actual                                
+0          1228     0     0     0    0
+1             0  1315     0     0    0
+2             0     0  1262     0    0
+3             0     0     0  1233    0
+4             0     0     0     0  412
+
+ Model trained on full set  TEST WITH VALIDATION ONLY
+Predicted   0    1   2   3   4
+Actual                        
+0          28    0   0   0   0
+1           0  115   0   0   0
+2           0    0  62   0   0
+3           0    0   0  33   0
+4           0    0   0   0  12
+{'test2_acc': 1.0, 'test2_kappa': 1.0, 'test_acc': 1.0, 'test_kappa': 1.0}
+Performing LATITUDE_rand8 randomized search...
+Number of iterations: 8
+Randomized search time: 16.8836585243543 min
+LATITUDE_rand8 randomized search results ************************
+Cross Validation Scores: [-14.74921889 -10.60385162  -9.19651756  -8.45984082  -8.66197771
+  -8.149816   -11.34896608  -8.85861287]
+Best score: -8.149816004788853
+Best params: 
+learning_rate: 0.15
+max_depth: 16
+n_estimators: 500
+objective: 'reg:linear'
+{'test2_mae': 7.452363999858498, 'test_mae': 3.9050724046629504}
+**********************************************************************
+Performing LATITUDE_rand8 final fit...
+Number of iterations: 8
+Final fit time: 1.560891071955363 min
+Final LATITUDE_rand8 model results *************************************
+{'test2_mae': 2.0239143250361087, 'test_mae': 1.6300073583448016}
+Performing LONGITUDE_rand8 randomized search...
+Number of iterations: 8
+/home/chief/anaconda3/lib/python3.6/site-packages/sklearn/externals/joblib/externals/loky/process_executor.py:706: UserWarning:
+
+A worker stopped while some jobs were given to the executor. This can be caused by a too short worker timeout or by a memory leak.
+
+Randomized search time: 24.154546733697256 min
+LONGITUDE_rand8 randomized search results ************************
+Cross Validation Scores: [-17.71400322 -11.27701165 -11.23174053 -11.04275413 -11.73978976
+ -10.47595743 -14.44682711 -11.12559494]
+Best score: -10.475957434170729
+Best params: 
+learning_rate: 0.15
+max_depth: 16
+n_estimators: 500
+objective: 'reg:linear'
+{'test2_mae': 9.448344891947734, 'test_mae': 5.231062137517921}
+**********************************************************************
+Performing LONGITUDE_rand8 final fit...
+Number of iterations: 8
+Final fit time: 5.211802244186401 min
+Final LONGITUDE_rand8 model results *************************************
+{'test2_mae': 0.0779381320813518, 'test_mae': 0.3829049810290557}

@@ -132,7 +132,6 @@ if sample == '5_1_train_val':
     train = pd.concat([train_val, train_tr])
     train_final = pd.concat([df_val, tr_samp])
 
-
 if sample == 'all_train':
     # Build a random sample of val data alone
     test_val = df_val.sample(n = 250, random_state = rand)
