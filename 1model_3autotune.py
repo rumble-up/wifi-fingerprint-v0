@@ -5,6 +5,10 @@
 Status: IN PROGRESS
 Purpose: Use raw signals, autotune models
 
+Future steps: 
+    + CV evaluate on full data set before predicting unknown test
+    + Plot error for each xgb iteration on CV
+    
 Created on Feb 22 2019
 @author: Laura Stupin
 
@@ -319,9 +323,6 @@ def lat_long_reg(target, tag, model_stop_pair,
                  df_pred, save_model
                  ):
 
-    # Set the target variables for LATITUDE
-    y_train, y_test, y_test2, y_train_final = set_y('LATITUDE')
-
     reg = xgb.XGBRegressor()
 
 
@@ -362,7 +363,9 @@ def lat_long_reg(target, tag, model_stop_pair,
     print(target + '_' + tag, "randomized search results ************************")
     mae_report(xgb_rscv, True, X_test, y_test, X_test2, y_test2)
     print('**********************************************************************')
-
+    
+    
+    
     # Final LATITUDE/LONGITUDE model --------------------------------------------------
 
     # Take best model, fit with all available data
@@ -378,12 +381,14 @@ def lat_long_reg(target, tag, model_stop_pair,
             early_stopping_rounds=10,
             verbose=xgb_verbose)
     
+    results = xgb_rscv_final.evals_result()
+    
     print("Final fit time:", (time.time() - final_fit_time_start)/60, 'min')
     print('Final', target + '_' + tag, 'model results *************************************')
     mae_report(xgb_rscv_final, False, X_test, y_test, X_test2, y_test2)
 
     # Save LATITUDE/LONGITUDE model ------------------------------------------------------
-             # lat or lon  
+                 # lat or lon  
     model_name = target[0:3].lower() +'_'+ tag + '_xgb_rscv_' + sample 
     
     if save_model:
@@ -400,20 +405,35 @@ def lat_long_reg(target, tag, model_stop_pair,
     # Save csv before other predictions are ready
     df_pred.to_csv('predictions/mvp_autotune_' + model_name +'.csv')
     
-    
+    return(results)
 # %% Latitude test ---------------------------------------------------
-lat_long_reg(target='LATITUDE', 
+target = 'LATITUDE'
+
+# Set the target variables to target
+y_train, y_test, y_test2, y_train_final = set_y(target)
+
+results = lat_long_reg(target=target, 
              tag='test', 
              # Lack of improvement in this pair stops model training
-             model_stop_pair = (X_test2, y_test2)
+             model_stop_pair = (X_test2, y_test2),
              n_iter_search=3,
              num_rounds=500,
              n_jobs=2, 
              xgb_verbose=True,
              df_pred=df_pred,
-             save_model=False)
+             save_model=True)
 
+type(results)
 
+trace1 = go.Scatter(
+        name = 'Train',
+        y = results['validation_0']['mae'])
+
+trace2 = go.Scatter(
+        name = 'Test',
+        y = results['validation_1']['mae'])
+
+plot([trace1, trace2])
 # %% Old Longitude XGB model ------------------------------------------------------
 
 # Set the target variables for LATITUDE
