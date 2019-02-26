@@ -247,8 +247,6 @@ def lat_long_reg(target, tag, model_stop_pair,
 
 
     random_grid = {'objective': ['reg:linear'],
-#               'silent': [True],
-               'verbose_eval': [100],
                'n_estimators': [num_rounds],       #n_estimators is equivalent to num_rounds in alternative syntax
                'max_depth': [3, 7, 13, 16],
                'learning_rate': [0.05, 0.1, 0.15, 0.2]}
@@ -353,7 +351,7 @@ df_pred = lat_long_reg(target=target, tag=tag,
              save_model=save_model)
 
 
-# LONGITUDE Predictions -----------------------------------------------------------
+# %% LONGITUDE Predictions -----------------------------------------------------------
 target = 'LONGITUDE'
 
 # Set the target variables to target
