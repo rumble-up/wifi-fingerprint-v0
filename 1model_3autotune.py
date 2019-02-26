@@ -314,7 +314,8 @@ joblib.dump(rf_rscv_final, 'models/' + model_name + '_final.sav')
 
 # %% Lat/Long Regression Function --------------------------------------------
 
-def lat_long_reg(target, tag, n_iter_search, num_rounds, n_jobs, xgb_verbose,
+def lat_long_reg(target, tag, model_stop_pair, 
+                 n_iter_search, num_rounds, n_jobs, xgb_verbose,
                  df_pred, save_model
                  ):
 
@@ -349,7 +350,8 @@ def lat_long_reg(target, tag, n_iter_search, num_rounds, n_jobs, xgb_verbose,
     print("Number of iterations:", n_iter_search)
     search_time_start = time.time()
     xgb_rscv = xgb_rscv.fit(X_train, y_train,
-                            eval_set = [(X_train, y_train), (X_test2, y_test2),]
+                            # Last pair from eval_set is used to stop model early
+                            eval_set = [(X_train, y_train), model_stop_pair,],
                             eval_metric='mae',
                             early_stopping_rounds=10,
                             verbose=xgb_verbose)
@@ -371,7 +373,7 @@ def lat_long_reg(target, tag, n_iter_search, num_rounds, n_jobs, xgb_verbose,
     
     final_fit_time_start = time.time()
     xgb_rscv_final= xgb_rscv_final.fit(X_train_final, y_train_final,
-            eval_set=[(X_train_final, y_train_final), (X_test2, y_test2)],
+            eval_set=[(X_train_final, y_train_final), model_stop_pair],
             eval_metric='mae',
             early_stopping_rounds=10,
             verbose=xgb_verbose)
@@ -402,6 +404,8 @@ def lat_long_reg(target, tag, n_iter_search, num_rounds, n_jobs, xgb_verbose,
 # %% Latitude test ---------------------------------------------------
 lat_long_reg(target='LATITUDE', 
              tag='test', 
+             # Lack of improvement in this pair stops model training
+             model_stop_pair = (X_test2, y_test2)
              n_iter_search=3,
              num_rounds=500,
              n_jobs=2, 
