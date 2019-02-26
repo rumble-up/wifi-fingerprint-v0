@@ -7,7 +7,7 @@ Purpose: Use raw signals, autotune models
 
 Future steps: 
     + CV evaluate on full data set before predicting unknown test
-    + Plot error for each xgb iteration on CV
+    + Clean up global/local variables
     
 Created on Feb 22 2019
 @author: Laura Stupin
@@ -364,7 +364,7 @@ def lat_long_reg(target, tag, model_stop_pair,
     mae_report(xgb_rscv, True, X_test, y_test, X_test2, y_test2)
     print('**********************************************************************')
     
-    
+    rscv_best_result = xgb_rscv.best_estimator_.evals_result()
     
     # Final LATITUDE/LONGITUDE model --------------------------------------------------
 
@@ -376,12 +376,12 @@ def lat_long_reg(target, tag, model_stop_pair,
     
     final_fit_time_start = time.time()
     xgb_rscv_final= xgb_rscv_final.fit(X_train_final, y_train_final,
-            eval_set=[(X_train_final, y_train_final), model_stop_pair],
+            eval_set=[(X_train_final, y_train_final), (X_test, y_test), model_stop_pair],
             eval_metric='mae',
             early_stopping_rounds=10,
             verbose=xgb_verbose)
     
-    results = xgb_rscv_final.evals_result()
+    final_result = xgb_rscv_final.evals_result()
     
     print("Final fit time:", (time.time() - final_fit_time_start)/60, 'min')
     print('Final', target + '_' + tag, 'model results *************************************')
@@ -405,35 +405,86 @@ def lat_long_reg(target, tag, model_stop_pair,
     # Save csv before other predictions are ready
     df_pred.to_csv('predictions/mvp_autotune_' + model_name +'.csv')
     
-    return(results)
-# %% Latitude test ---------------------------------------------------
+    return(rscv_best_result, final_result)
+# %% Latitude Predictions -----------------------------------------------------------
 target = 'LATITUDE'
 
 # Set the target variables to target
 y_train, y_test, y_test2, y_train_final = set_y(target)
 
-results = lat_long_reg(target=target, 
-             tag='test', 
-             # Lack of improvement in this pair stops model training
-             model_stop_pair = (X_test2, y_test2),
-             n_iter_search=3,
-             num_rounds=500,
-             n_jobs=2, 
-             xgb_verbose=True,
-             df_pred=df_pred,
-             save_model=True)
+result_rscv_best, result_final = lat_long_reg(target=target, 
+                                             tag='test', 
+                                             # Lack of improvement in this pair stops model training
+                                             model_stop_pair = (X_test2, y_test2),
+                                             n_iter_search=3,
+                                             num_rounds=500,
+                                             n_jobs=2, 
+                                             xgb_verbose=True,
+                                             df_pred=df_pred,
+                                             save_model=True)
 
-type(results)
+# %% Plot learning curve ------------------------------------------------------
+
+# This part not functional yet.
+result_rscv_best = rscv_best_result
+result_final = final_result
+
+result_final.values()
+
+
+
+def gen_traces(name, result_dict):
+    
+    all_traces = list()
+    
+    for validation in result_dict.keys():
+        
+        trace = go.Scatter(
+                name = name + '_' + validation,
+                y = result_dict[validation]['mae'])
+        all_traces.append(trace)
+    return(all_traces)
+
+        
+
+traces1 = gen_traces('rscv', result_rscv_best)
+traces2 = gen_traces('final', result_final)
+
+traces1.append(traces2.items())
+
+layout = go.Layout(
+        yaxis=dict(range=[0,20]))
+
+fig = go.Figure(data=traces1, layout=layout)
+plot(fig)
+
+
+
+results = result_final        
 
 trace1 = go.Scatter(
         name = 'Train',
         y = results['validation_0']['mae'])
 
+all_traces.append(trace1)
+
+type(trace1)
+
+data = list()
+data.append(trace1)
+
+
 trace2 = go.Scatter(
         name = 'Test',
         y = results['validation_1']['mae'])
 
-plot([trace1, trace2])
+data = [trace1, trace2]
+
+layout = go.Layout(
+        yaxis=dict(range=[0,20]))
+
+fig = go.Figure(data=data, layout=layout)
+plot(fig)
 # %% Old Longitude XGB model ------------------------------------------------------
 
 # Set the target variables for LATITUDE
