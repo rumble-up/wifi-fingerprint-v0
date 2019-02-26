@@ -380,8 +380,8 @@ def lat_long_reg(target, tag, n_iter_search, n_jobs, xgb_verbose,
              # lat or lon  
     model_name = target[0:3].lower() +'_'+ tag + '_xgb_rscv_' + sample 
 
-    joblib.dump(rf_rscv1, 'models/' + model_name + '.sav')
-    joblib.dump(rf_rscv_final, 'models/' + model_name + '_final.sav')
+    joblib.dump(xgb_rscv, 'models/' + model_name + '.sav')
+    joblib.dump(xgb_rscv_final, 'models/' + model_name + '_final.sav')
 
 
     # Final LATITUDE/LONGITUDE prediction ---------------------------------------------------
