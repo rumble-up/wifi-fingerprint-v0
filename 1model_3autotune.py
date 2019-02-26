@@ -335,23 +335,27 @@ def lat_long_reg(target, tag, n_iter_search, n_jobs, xgb_verbose,
                'max_depth': [3, 7, 13, 16],
                'learning_rate': [0.05, 0.1, 0.15, 0.2]}
 
-    fit_params = {'eval_metric': 'mae',
-              'early_stopping_rounds': 10,
-              'eval_set': [(X_test2, y_test2),]}
+#    fit_params = {'eval_metric': 'mae',
+#              'early_stopping_rounds': 10,
+#              'eval_set': [(X_test2, y_test2),]}
 
     xgb_rscv = RandomizedSearchCV(reg, random_grid,
                               n_iter=n_iter_search,
                               n_jobs=n_jobs,
                               verbose=0,
                               cv=5,
-                              fit=fit_params,
+#                              fit=fit_params,
                               scoring='neg_mean_absolute_error',
                               random_state=rand)
 
     print("Performing", target, tag, "randomized search...")
     print("Number of iterations:", n_iter_search)
     search_time_start = time.time()
-    xgb_rscv = xgb_rscv.fit(X_train, y_train,)
+    xgb_rscv = xgb_rscv.fit(X_train, y_train,
+                            early_stopping_rounds=10,
+                            eval_metric='mae',
+                            eval_set = [(X_test2, y_test2),] )
+    
     print("Randomized search time:", (time.time() - search_time_start)/60, 'min')
 
 
