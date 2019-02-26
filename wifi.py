@@ -26,7 +26,7 @@ from sklearn.externals.joblib import dump, load
 import matplotlib.pyplot as plt
 plt.close('all')
 from mpl_toolkits.mplot3d import Axes3D 
-import plotly.plotly as py
+import plotly.offline as py
 import plotly.graph_objs as go
 import seaborn
 
@@ -267,8 +267,6 @@ fg.map(plt.scatter, 'LATITUDE', 'LONGITUDE').add_legend()
 #%%
 #### MODELING ####
 
-### 1- BUILDING - Models on Preprocessed Data
-
 # Remove the target variables from the training set
 y1 = training['BUILDINGID']
 y2 = training['FLOOR']
@@ -293,15 +291,11 @@ param_grid = {
 }
 CV_rfcv = GridSearchCV(estimator=rfcv, param_grid=param_grid, cv=5)
 
-# =============================================================================
-# ## Cross validation RFC
-# rfcv = RandomForestClassifier(n_jobs=-1,max_features= 'sqrt' ,n_estimators=50, oob_score = True, verbose=2) 
-# param_grid = { 
-#     'n_estimators': [100, 250],
-#     'max_features': ['auto', 'sqrt', 'log2']
-# }
-# CV_rfcv = GridSearchCV(estimator=rfcv, param_grid=param_grid, cv=5)
-# =============================================================================
+#%%
+
+### SAMPLE 1: 900 Train sample + Half the test ####
+
+### 1- BUILDING 
 
 ## SVM
 # Train on training data and predict using the testing data
@@ -348,6 +342,7 @@ fit_xgb2 = xgb1.fit(train_waps, y2)
 pred_xgb2 = fit_xgb2.predict(val_waps)
 xgb1.score(train_waps, y2)
 accuracy_score(val_floor, pred_xgb2)
+cohen_kappa_score(val_floor, pred_xgb2)
 
 ## RandomForest
 # Train on training data and predict using the testing data
@@ -391,6 +386,23 @@ else:
 pred_rf3 = fit_rf3.predict(val_wapsb_pred)
 mean_absolute_error(val_long, pred_rf3)
 
+# PLOTLY
+trace = go.Scatter(
+    x = val_long,
+    y = pred_xgb3,
+    mode = 'markers'
+)
+data = [trace]
+py.plot(data)
+
+trace2 = go.Scatter(
+    x = val_long,
+    y = pred_rf3,
+    mode = 'markers'
+)
+data2 = [trace2]
+py.plot(data2)
+
 #%%
 #### MODELING ####
 
@@ -402,7 +414,7 @@ val_wapsblo_pred.loc[:, "LONGITUDE"] = pred_rf3.copy()
 ## XGBoost
 xgb4_file = Path("xgb4.joblib")
 if xgb4_file.is_file():
-    print ("I'm here.")
+    print ("XGB4 here.")
     fit_xgb4 = load('xgb4.joblib')
 else:
     fit_xgb4 = xgb1.fit(train_wapsblo, y4)
@@ -447,6 +459,104 @@ else:
 pred_rf4_2 = fit_rf4_2.predict(val_wapsb_pred)
 mean_absolute_error(val_lat, pred_rf4_2)
 
+
+# PLOTLY
+trace3 = go.Scatter(
+    x = val_lat,
+    y = pred_xgb4,
+    mode = 'markers'
+)
+data3 = [trace3]
+py.plot(data3)
+
+trace4 = go.Scatter(
+    x = val_lat,
+    y = pred_rf4,
+    mode = 'markers'
+)
+data4 = [trace4]
+py.plot(data4)
+
+#%%
+#### MODELING ####
+
+#### SAMPLE 2: with 700 each + All test ####
+
+# Sampling
+sample_train2 = train2.groupby(['BUILDINGID','FLOOR']).apply(lambda x: x.sample(n=500))
+training2 = sample_train2.append(val2)
+train_waps2 = training2.iloc[:, :312]
+# Reorder columns
+train_dep2 = training2.iloc[:, 312:]
+cols = train_dep2.columns.tolist()
+cols = [cols[3]] + cols [0:3] + cols[4:]
+train_dep2 = train_dep2[cols]
+training2 = pd.concat([train_waps2, train_dep2], axis=1)
+# Prepare train and val waps objects
+train_wapsb2 = training2.iloc[:, :313]
+train_wapsblo2 = training2.iloc[:, :314]
+
+# Training sets
+y1_2 = training2['BUILDINGID']
+y2_2 = training2['FLOOR']
+y3_2 = training2['LONGITUDE']
+y4_2 = training2['LATITUDE']
+yy_2 = pd.concat([y3, y4], axis=1)
+
+## Fits
+# Building
+fit_knn2_1 = knn1.fit(train_waps2, y1_2)
+# Floor
+xgb2_2_file = Path("xgb2_2.joblib")
+if xgb2_2_file.is_file():
+    print ("XGB2_2 here.")
+    fit_xgb2_2 = load('xgb2_2.joblib') 
+else:
+    fit_xgb2_2 = xgb1.fit(train_waps2, y2_2)
+    dump(fit_xgb2_2, 'xgb2_2.joblib') 
+# Longitude
+xgb2_3_file = Path("xgb2_3.joblib")
+if xgb2_3_file.is_file():
+    print ("XGB2_3 here.")
+    fit_xgb2_3 = load('xgb2_3.joblib') 
+else:
+    fit_xgb2_3 = xgb1.fit(train_wapsb2, y3_2)
+    dump(fit_xgb2_3, 'xgb2_3.joblib')  
+    
+rf2_3_file = Path("rf2_3.joblib")
+if rf2_3_file.is_file():
+    print ("RF2_3 here.")
+    fit_rf2_3 = load('rf2_3.joblib') 
+else:
+    fit_rf2_3 = rfr.fit(train_wapsb2, y3_2)
+    dump(fit_rf2_3, 'rf2_3.joblib')  
+    
+# Latitude
+xgb2_4_file = Path("xgb2_4.joblib")
+if xgb2_4_file.is_file():
+    print ("XGB2_4 here.")
+    fit_xgb2_4 = load('xgb2_4.joblib') 
+else:
+    fit_xgb2_4 = xgb1.fit(train_wapsb2, y4_2)
+    dump(fit_xgb2_4, 'xgb2_4.joblib') 
+    
+rf2_4_file = Path("rf2_4.joblib")
+if rf2_4_file.is_file():
+    print ("RF2_4 here.")
+    fit_rf2_4 = load('rf2_4.joblib') 
+else:
+    fit_rf2_4 = rfr.fit(train_wapsb2, y4_2)
+    dump(fit_rf2_4, 'rf2_4.joblib') 
+    
+# Latitude (with Longitude as well)
+xgb2_4_2_file = Path("xgb2_4_2.joblib")
+if xgb2_4_2_file.is_file():
+    print ("XGB2_4_2 here.")
+    fit_xgb2_4_2 = load('xgb2_4_2.joblib') 
+else:
+    fit_xgb2_4_2 = xgb1.fit(train_wapsblo2, y4_2)
+    dump(fit_xgb2_4_2, 'xgb2_4_2.joblib')  
+
 #%%
 #### TEST DATA STUFF ####
 
@@ -460,7 +570,7 @@ aps_test = test.iloc[:, :520]
 aps_train2 = train.loc[:, train.apply(pd.Series.nunique) != 1]
 aps_val2 = val.loc[:, val.apply(pd.Series.nunique) != 1]
 aps_test2 = test.loc[:, test.apply(pd.Series.nunique) != 1]
-
+# Common APs
 aps_tetr = np.intersect1d(aps_test.columns, aps_train.columns)
 aps_teva = np.intersect1d(aps_test.columns, aps_val.columns)
 
@@ -474,13 +584,12 @@ aps_test = aps_test.replace(100, -110)
 
 ## Building prediction
 pred_1_b = fit_knn1.predict(aps_test)
+## Floor prediction
+pred_1_f = fit_rf2.predict(aps_test)
+
 # Prediction results
 unique1b, counts1b = np.unique(pred_1_b, return_counts=True)
 dict(zip(unique1b, counts1b))
-
-## Floor prediction
-pred_1_f = fit_rf2.predict(aps_test)
-# Prediction results
 unique1f, counts1f = np.unique(pred_1_f, return_counts=True)
 dict(zip(unique1f, counts1f))
 
@@ -488,9 +597,8 @@ dict(zip(unique1f, counts1f))
 aps_test_pred = aps_test.copy()
 aps_test_pred.loc[:, "BUILDINGID"] = pred_1_b
 pred_1_lo = fit_xgb3.predict(aps_test_pred)
-
 ## Latitude prediction
-pred_1_la = fit_rf4_2.predict(aps_test_pred)
+pred_1_la = fit_xgb4_2.predict(aps_test_pred)
 
 # Long-Lat visualization
 lo1 = pd.DataFrame(pred_1_lo)
@@ -505,23 +613,92 @@ plot3d.set_zlabel('Floor')
 plt.show()
 plt.figure()
 
+Prediction1 = pd.DataFrame(
+    {'Building': pred_1_b,
+     'Floor': pred_1_f,
+     'Longitude': pred_1_lo,
+     'Latitude': pred_1_la
+    })
+
+Prediction1.to_csv("predictions_dm")
+    
 ## 222222222222222222222222222222222222222222222222222222222222222222222222222222222222 ##
-pred_2_b = fit_rf1.predict(aps_test)
+pred_2_b = fit_knn1.predict(aps_test)
 pred_2_f = fit_rf2.predict(aps_test)
+## Longitude prediction
+pred_2_lo = fit_xgb3.predict(aps_test_pred)
+## Latitude prediction
+aps_test_predlo = aps_test_pred.copy()
+aps_test_predlo.loc[:, "LONGITUDE"] = pred_2_lo
+pred_2_la = fit_xgb4.predict(aps_test_predlo)
 
-aps_test_pred = aps_test.copy()
-aps_test_pred.loc[:, "BUILDINGID"] = pred_1_b
+Prediction2 = pd.DataFrame(
+    {'Building': pred_2_b,
+     'Floor': pred_2_f,
+     'Longitude': pred_2_lo,
+     'Latitude': pred_2_la
+    })
 
-pred_xgb3 = fit_xgb3.predict(val_wapsb_pred)
-
-val_wapsblo_pred = val_wapsb_pred.copy()
-val_wapsblo_pred.loc[:, "LONGITUDE"] = pred_rf3.copy()
-
-pred_rf4 = fit_rf4.predict(val_wapsblo_pred)
+Prediction2.to_csv("predictions_dm-2")
 
 ## 333333333333333333333333333333333333333333333333333333333333333333333333333333333333 ##
+## Building prediction
+pred_3_b = fit_knn2_1.predict(aps_test)
+## Floor prediction
+pred_3_f = fit_xgb2_2.predict(aps_test)
+## Longitude prediction
+aps_test_pred2 = aps_test.copy()
+aps_test_pred2.loc[:, "BUILDINGID"] = pred_3_b
+pred_3_lo = fit_xgb2_3.predict(aps_test_pred2)
+## Latitude prediction
+pred_3_la = fit_xgb2_4.predict(aps_test_pred2)
+
+Prediction3 = pd.DataFrame(
+    {'Building': pred_3_b,
+     'Floor': pred_3_f,
+     'Longitude': pred_3_lo,
+     'Latitude': pred_3_la
+    })
+
+Prediction3.to_csv("predictions_dm-3")
 
 ## 444444444444444444444444444444444444444444444444444444444444444444444444444444444444 ##
+pred_4_b = fit_knn2_1.predict(aps_test)
+pred_4_f = fit_xgb2_2.predict(aps_test)
+## Longitude prediction
+pred_4_lo = fit_xgb2_3.predict(aps_test_pred2)
+## Latitude prediction
+aps_test_predlo2 = aps_test_pred2.copy()
+aps_test_predlo2.loc[:, "LONGITUDE"] = pred_4_lo
+pred_4_la = fit_xgb2_4_2.predict(aps_test_predlo2)
+
+Prediction4 = pd.DataFrame(
+    {'Building': pred_4_b,
+     'Floor': pred_4_f,
+     'Longitude': pred_4_lo,
+     'Latitude': pred_4_la
+    })
+
+Prediction4.to_csv("predictions_dm-4")
+
+## 55555555555555555555555555555555555555555555555555555555555555555555555555555555555 ##
+## Building prediction
+pred_5_b = fit_knn2_1.predict(aps_test)
+## Floor prediction
+pred_5_f = fit_xgb2_2.predict(aps_test)
+## Longitude prediction
+pred_5_lo = fit_rf2_3.predict(aps_test_pred2)
+## Latitude prediction
+pred_5_la = fit_rf2_4.predict(aps_test_pred2)
+
+Prediction5 = pd.DataFrame(
+    {'Building': pred_5_b,
+     'Floor': pred_5_f,
+     'Longitude': pred_5_lo,
+     'Latitude': pred_5_la
+    })
+
+Prediction5.to_csv("predictions_dm-5")
 
 
 #%%
