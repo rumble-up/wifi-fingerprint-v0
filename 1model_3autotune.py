@@ -368,142 +368,130 @@ df_pred = lat_long_reg(target=target, tag=tag,
              save_model=save_model)
 
 # Export all predictions to csv
-df_pred.to_csv('predictions/mvp_autotune_rand1.csv')
-
-# %% Plot learning curve ------------------------------------------------------
-
-# This part not functional yet.
-result_rscv_best = rscv_best_result
-result_final = final_result
-
-result_final.values()
+df_pred.to_csv('predictions/mvp_autotune_' + tag + '.csv')
 
 
-
-def gen_traces(name, result_dict):
-    
-    all_traces = list()
-    
-    for validation in result_dict.keys():
-        
-        trace = go.Scatter(
-                name = name + '_' + validation,
-                y = result_dict[validation]['mae'])
-        all_traces.append(trace)
-    return(all_traces)
-
-        
-
-traces1 = gen_traces('rscv', result_rscv_best)
-traces2 = gen_traces('final', result_final)
-
-traces1.append(traces2.items())
-
-layout = go.Layout(
-        yaxis=dict(range=[0,20]))
-
-fig = go.Figure(data=traces1, layout=layout)
-plot(fig)
-
-
-
-results = result_final        
-
-trace1 = go.Scatter(
-        name = 'Train',
-        y = results['validation_0']['mae'])
-
-all_traces.append(trace1)
-
-type(trace1)
-
-data = list()
-data.append(trace1)
-
-
-trace2 = go.Scatter(
-        name = 'Test',
-        y = results['validation_1']['mae'])
-
-data = [trace1, trace2]
-
-layout = go.Layout(
-        yaxis=dict(range=[0,20]))
-
-fig = go.Figure(data=data, layout=layout)
-plot(fig)
 
 
 # %% Visualize errors ---------------------------------------------------------
 
-error_both = errorLon + errorLat
-
-# Tough test set
-y_test2_long = test_val['LONGITUDE']
-y_test2_lat = test_val['LATITUDE']
-
-# Full test set
-y_test_long = test['LONGITUDE']
-y_test_lat = test['LATITUDE']
-
-def find_error(X_test, y_test, xgb_model):
-    dtest = xgb.DMatrix(X_test)
-    pred = xgb_model.predict(dtest)
-    error = pred - y_test
-    return(error)
-
-# Error on tough test set only
-error_lat2 = find_error(X_test2, y_test2_lat, bst)
-error_lon2 = find_error(X_test2, y_test2_lat, bst_lon)
-
-error_lat = find_error(X_test, y_test_lat, bst)
-error_lon = find_error(X_test, y_test_long, bst_lon)
-
-
-# Error on full test set
-error = error_lon
-y_plot = y_test_lat
-x_plot = y_test_long
-
-# Error on tough test set
-error = error_lat2
-y_plot = y_test2_lat
-x_plot = y_test2_long
-
-# Ensure that zero is always the same color, gray
-zero = abs(0 - min(error) / (max(error) - min(error)))
-
-colorscale = [[0, 'rgba(5,113,176, 1)'], 
-               [zero, 'rgba(211, 211, 211, 1)' ],
-               [1, 'rgba(202,0,32, 1)']]
-
-trace = go.Scatter3d(
-        x=x_plot,
-        y=y_plot,
-        z=error,
-        mode='markers',
-        marker = dict(
-                size = 4,
-                color=error,
-                colorscale=colorscale
-        )
-)
-
-plot([trace])
-
-
-
-
+#error_both = errorLon + errorLat
 #
-#errorLong = xgbpredLong - y_test
+## Tough test set
+#y_test2_long = test_val['LONGITUDE']
+#y_test2_lat = test_val['LATITUDE']
+#
+## Full test set
+#y_test_long = test['LONGITUDE']
+#y_test_lat = test['LATITUDE']
+#
+#def find_error(X_test, y_test, xgb_model):
+#    dtest = xgb.DMatrix(X_test)
+#    pred = xgb_model.predict(dtest)
+#    error = pred - y_test
+#    return(error)
+#
+## Error on tough test set only
+#error_lat2 = find_error(X_test2, y_test2_lat, bst)
+#error_lon2 = find_error(X_test2, y_test2_lat, bst_lon)
+#
+#error_lat = find_error(X_test, y_test_lat, bst)
+#error_lon = find_error(X_test, y_test_long, bst_lon)
+#
+#
+## Error on full test set
+#error = error_lon
+#y_plot = y_test_lat
+#x_plot = y_test_long
+#
+## Error on tough test set
+#error = error_lat2
+#y_plot = y_test2_lat
+#x_plot = y_test2_long
+#
+## Ensure that zero is always the same color, gray
+#zero = abs(0 - min(error) / (max(error) - min(error)))
+#
+#colorscale = [[0, 'rgba(5,113,176, 1)'], 
+#               [zero, 'rgba(211, 211, 211, 1)' ],
+#               [1, 'rgba(202,0,32, 1)']]
+#
+#trace = go.Scatter3d(
+#        x=x_plot,
+#        y=y_plot,
+#        z=error,
+#        mode='markers',
+#        marker = dict(
+#                size = 4,
+#                color=error,
+#                colorscale=colorscale
+#        )
+#)
+#
+#plot([trace])
+
+
+
+# %% BACKBURNER
+# Plot learning curve ------------------------------------------------------
+
+## This part not functional yet.
+#result_rscv_best = rscv_best_result
+#result_final = final_result
+#
+#result_final.values()
+#
+#
+#
+#def gen_traces(name, result_dict):
+#    
+#    all_traces = list()
+#    
+#    for validation in result_dict.keys():
+#        
+#        trace = go.Scatter(
+#                name = name + '_' + validation,
+#                y = result_dict[validation]['mae'])
+#        all_traces.append(trace)
+#    return(all_traces)
+#
+#        
+#
+#traces1 = gen_traces('rscv', result_rscv_best)
+#traces2 = gen_traces('final', result_final)
+#
+#traces1.append(traces2.items())
+#
+#layout = go.Layout(
+#        yaxis=dict(range=[0,20]))
+#
+#fig = go.Figure(data=traces1, layout=layout)
+#plot(fig)
+#
+#
+#
+#results = result_final        
+#
+#trace1 = go.Scatter(
+#        name = 'Train',
+#        y = results['validation_0']['mae'])
+#
+#all_traces.append(trace1)
+#
+#type(trace1)
+#
+#data = list()
+#data.append(trace1)
+#
 #
 #trace2 = go.Scatter(
-#        x=y_test,
-#        y=errorLong,
-#        mode='markers')
+#        name = 'Test',
+#        y = results['validation_1']['mae'])
 #
-#plot([trace2])
+#data = [trace1, trace2]
 #
+#layout = go.Layout(
+#        yaxis=dict(range=[0,20]))
 #
-#
-#print('The Longitude MAE is:', abs(xgbpred - y_test).mean())
+#fig = go.Figure(data=data, layout=layout)
+#plot(fig)
