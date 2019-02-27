@@ -31,7 +31,7 @@ wd=getcwd()
 chdir(wd)
 
 import pandas as pd
-import xgboost as xgb
+
 from pprint import pprint
 import time
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
@@ -39,6 +39,7 @@ from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import cohen_kappa_score, mean_absolute_error
 from sklearn.externals import joblib
 
+from scipy.spatial import distance
 import plotly.graph_objs as go
 from plotly.offline import plot
 
@@ -405,18 +406,17 @@ y_test2_lat = test_val['LATITUDE']
 y_test_long = test['LONGITUDE']
 y_test_lat = test['LATITUDE']
 
-def find_error(X_test, y_test, xgb_model):
-    dtest = xgb.DMatrix(X_test)
-    pred = xgb_model.predict(dtest)
+def find_error(X_test, y_test, model):
+    pred = model.predict(X_test)
     error = pred - y_test
     return(error)
-
+    
 # Error on tough test set only
-error_lat2 = find_error(X_test2, y_test2_lat, bst)
-error_lon2 = find_error(X_test2, y_test2_lat, bst_lon)
+error_lat2 = find_error(X_test2, y_test2_lat, lat_model)
+error_lon2 = find_error(X_test2, y_test2_lat, lon_model)
 
-error_lat = find_error(X_test, y_test_lat, bst)
-error_lon = find_error(X_test, y_test_long, bst_lon)
+error_lat = find_error(X_test, y_test_lat, lat_model)
+error_lon = find_error(X_test, y_test_long, lon_model)
 
 
 # Error on full test set
@@ -436,10 +436,10 @@ colorscale = [[0, 'rgba(5,113,176, 1)'],
                [zero, 'rgba(211, 211, 211, 1)' ],
                [1, 'rgba(202,0,32, 1)']]
 
-trace = go.Scatter3d(
+tr_AE = go.Scatter3d(
         x=x_plot,
         y=y_plot,
-        z=error,
+        z=abs(error),
         mode='markers',
         marker = dict(
                 size = 4,
@@ -447,5 +447,12 @@ trace = go.Scatter3d(
                 colorscale=colorscale
         )
 )
+        
+layout = go.Layout(dict(
+        title="Test Set Longitude Error",
+        titlefont=dict( size=40)))
 
-plot([trace])
+fig = go.Figure(data = [tr_AE],
+                layout = layout)
+
+plot(fig)
