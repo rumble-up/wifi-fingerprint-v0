@@ -31,6 +31,7 @@ wd=getcwd()
 chdir(wd)
 
 import pandas as pd
+import numpy as np
 
 from pprint import pprint
 import time
@@ -391,6 +392,7 @@ lat_model, lat_model_final = rf_lon_lat(target='LATITUDE',
                                     n_jobs=3, 
                                     save_model=True)
 
+
 # Export all predictions to csv --------------------------------------------
 
 # Export all predictions to csv
@@ -406,6 +408,15 @@ y_test2_lat = test_val['LATITUDE']
 y_test_long = test['LONGITUDE']
 y_test_lat = test['LATITUDE']
 
+# MAE
+mean_absolute_error(lon_model.predict(X_test), y_test_long)
+mean_absolute_error(lon_model.predict(X_test2), y_test2_long)
+
+mean_absolute_error(lat_model.predict(X_test), y_test_lat)
+mean_absolute_error(lat_model.predict(X_test2), y_test2_lat)
+
+
+
 def find_error(X_test, y_test, model):
     pred = model.predict(X_test)
     error = pred - y_test
@@ -413,21 +424,29 @@ def find_error(X_test, y_test, model):
     
 # Error on tough test set only
 error_lat2 = find_error(X_test2, y_test2_lat, lat_model)
-error_lon2 = find_error(X_test2, y_test2_lat, lon_model)
+error_lon2 = find_error(X_test2, y_test2_long, lon_model)
 
 error_lat = find_error(X_test, y_test_lat, lat_model)
 error_lon = find_error(X_test, y_test_long, lon_model)
 
 
+y_train_f, y_test_f, y_test2_f, y_train_final_f = set_y('FLOOR')
+
 # Error on full test set
-error = error_lon
+error = error_lat
 y_plot = y_test_lat
 x_plot = y_test_long
+floor = y_test_f
 
 # Error on tough test set
 error = error_lat2
 y_plot = y_test2_lat
 x_plot = y_test2_long
+floor = y_test2_f
+
+
+    
+
 
 # Ensure that zero is always the same color, gray
 zero = abs(0 - min(error) / (max(error) - min(error)))
@@ -439,7 +458,7 @@ colorscale = [[0, 'rgba(5,113,176, 1)'],
 tr_AE = go.Scatter3d(
         x=x_plot,
         y=y_plot,
-        z=abs(error),
+        z=floor,
         mode='markers',
         marker = dict(
                 size = 4,
@@ -449,10 +468,40 @@ tr_AE = go.Scatter3d(
 )
         
 layout = go.Layout(dict(
-        title="Test Set Longitude Error",
-        titlefont=dict( size=40)))
+        title="Test Set Latitude Error",
+        titlefont=dict(size=40)))
 
 fig = go.Figure(data = [tr_AE],
                 layout = layout)
 
 plot(fig)
+
+
+# Histogram
+trace1 = go.Histogram(x=error_lat2,
+                      name = 'Latitude')
+
+trace2 = go.Histogram(x=error_lon2,
+                      name = 'Longitude')
+
+layout = go.Layout(dict(
+        title='Random Position Test Set Error',
+        titlefont=dict(size=40)))
+
+fig = go.Figure(data = [trace1, trace2], layout=layout)
+
+plot(fig)
+
+#f0 = np.transpose(lon_model.predict(X_test))
+#f0[:,2] = f0
+#f1 = np.array(f0, f0)
+#
+#f0
+#
+#euc = np.zeros(shape(len(X_test, 4)))
+#
+#def find_euclidean_error(X_test, y_test, lat_model, lon_model):
+#    euc = numpy.zeros(shape(len(X_test, 4)))
+#    lat_pred = lat_model.predict(X_test)
+#    lon_pred = lon_model.predict(X_test)
+    
