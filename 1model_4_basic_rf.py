@@ -395,331 +395,57 @@ lat_model, lat_model_final = rf_lon_lat(target='LATITUDE',
 # Export all predictions to csv
 df_pred.to_csv('predictions/RF_no_flr_pred_rand' + str(lon_lat_rand_search) + '.csv', index=False)
 
-
-# %% Old Code below -----------------------------------------------------------
-# ****************************************************************************
-# ============================================================================
-# %% Floor Random Forest Model --------------------------------------------
-
-# Set the target variables for FLOOR
-y_train, y_test, y_test2, y_train_final = set_y('FLOOR')
-
-rf = RandomForestClassifier()
-
-# PRINT MODEL DEFAULTS!
-# pprint(rf.get_params())
-
-n_iter_search = 9
-random_grid = {"n_estimators": [80, 100, 120],
-              "max_features": ['auto', 'sqrt'],
-              "max_depth": [10, 50, 100, None],
-              "min_samples_leaf": [1, 2, 4],
-              "min_samples_split":[2, 5, 10],
-              "bootstrap": [True, False]}
-#              "criterion": ["gini", "entropy"]}
-
-rf_rscv = RandomizedSearchCV(rf, param_distributions=random_grid,
-                             n_iter=n_iter_search, 
-                             cv=5,
-                             n_jobs = 2,
-                             scoring = 'accuracy')
-
-print("Performing randomized search for floor...")
-print("Number of iterations:", n_iter_search)
-search_time_start = time.time()
-rf_rscv1 = rf_rscv.fit(X_train, y_train)
-print("Randomized search time:", time.time() - search_time_start)
-
-
-# %% Report Floor Model -------------------------------------------------------
-
-print('**********************************************************************')
-print('Floor model complete. \n')
-acc_report(rf_rscv1, 'First model', True, 
-           X_test, y_test, X_test2, y_test2)
-
-# Choose the best estimator from Random Search as final model
-rf_rscv_final = rf_rscv1.best_estimator_
-
-# Take best model, fit with all available data
-rf_rscv_final = rf_rscv_final.fit(X_train_final, y_train_final)
-
-
-print('**********************************************************************')
-print('Final model trained on full dataset')
-acc_report(rf_rscv_final, 'Model trained on full set', False,
-           X_test, y_test, X_test2, y_test2)
-
-# Save model
-model_name = 'rf_rscv_' + sample
-
-joblib.dump(rf_rscv1, 'models/floor_rand9_' + model_name + '.sav')
-joblib.dump(rf_rscv_final, 'models/floor_rand9' + model_name + '_final.sav')
-
-
-# %% Final Floor prediction ---------------------------------------------------
-
-# Be very careful changing this!!!
-df_pred['FLOOR'] = rf_rscv_final.predict(X_pred_final)
-df_pred  = df_pred.rename(columns = {'FLOOR': 'FLOOR_' + model_name + '_final.sav'})
-
-
-
-# %% Lat/Long Regression Function --------------------------------------------
-
-def lat_long_reg(target, tag, model_stop_pair, 
-                 random_search, num_rounds, n_jobs, xgb_verbose,
-                 df_pred, save_model
-                 ):
-
-    reg = xgb.XGBRegressor()
-
-
-    random_grid = {'objective': ['reg:linear'],
-               'n_estimators': [num_rounds],       #n_estimators is equivalent to num_rounds in alternative syntax
-               'max_depth': [3, 7, 13, 16],
-               'learning_rate': [0.05, 0.1, 0.15, 0.2]}
-    
-#    This was the old method, but it's deprecated 
-#    fit_params = {'eval_metric': 'mae',
-#              'early_stopping_rounds': 10,
-#              'eval_set': [(X_test2, y_test2),]}
-
-    xgb_rscv = RandomizedSearchCV(reg, random_grid,
-                              n_iter=random_search,
-                              n_jobs=n_jobs,
-                              verbose=0,
-                              cv=5,
-#                              fit=fit_params,
-                              scoring='neg_mean_absolute_error',
-                              random_state=rand)
-
-    print("Performing", target + '_' + tag, "randomized search...")
-    print("Number of iterations:", random_search)
-    search_time_start = time.time()
-    xgb_rscv = xgb_rscv.fit(X_train, y_train,
-                            # Last pair from eval_set is used to stop model early
-                            eval_set = [(X_train, y_train), model_stop_pair,],
-                            eval_metric='mae',
-                            early_stopping_rounds=10,
-                            verbose=xgb_verbose)
-    
-    print("Randomized search time:", (time.time() - search_time_start)/60, 'min')
-
-
-    print(target + '_' + tag, "randomized search results ************************")
-    mae_report(xgb_rscv, True, X_test, y_test, X_test2, y_test2)
-    print('**********************************************************************')
-    
-    # Used for plotting learning curve
-#    rscv_best_result = xgb_rscv.best_estimator_.evals_result()
-    
-    # Final LATITUDE/LONGITUDE model --------------------------------------------------
-
-    # Take best model, fit with all available data
-    xgb_rscv_final = xgb_rscv.best_estimator_
-    
-    print("Performing", target + '_' + tag, "final fit...")
-    print("Number of iterations:", random_search)
-    
-    final_fit_time_start = time.time()
-    xgb_rscv_final= xgb_rscv_final.fit(X_train_final, y_train_final,
-            eval_set=[(X_train_final, y_train_final), model_stop_pair],
-            eval_metric='mae',
-            early_stopping_rounds=10,
-            verbose=xgb_verbose)
-    
-    # Used for plotting learning curve
-#    final_result = xgb_rscv_final.evals_result()
-    
-    print("Final fit time:", (time.time() - final_fit_time_start)/60, 'min')
-    print('Final', target + '_' + tag, 'model results *************************************')
-    mae_report(xgb_rscv_final, False, X_test, y_test, X_test2, y_test2)
-
-    # Save LATITUDE/LONGITUDE model ------------------------------------------------------
-                 # lat or lon  
-    model_name = target[0:3].lower() +'_'+ tag + '_xgb_rscv_' + sample 
-    
-    if save_model:
-        joblib.dump(xgb_rscv, 'models/' + model_name + '.sav')
-        joblib.dump(xgb_rscv_final, 'models/' + model_name + '_final.sav')
-
-
-    # Final LATITUDE/LONGITUDE prediction ---------------------------------------------------
-
-    # Be very careful changing this!!!
-    df_pred[target] = xgb_rscv_final.predict(X_pred_final)
-    df_pred  = df_pred.rename(columns = {target: target + '_' + model_name + '_final.sav'})
-    
-    
-    return(df_pred)
-#    return(rscv_best_result, final_result)
-
-# %% Set parameters for both LAT/LONG predictions -----------------------------
-tag = 'rand8'
-
-random_search = 8
-num_rounds = 500
-# Number of cores to use on computer
-n_jobs = 2 
-xgb_verbose = False
-save_model = True
-
-# LATITUDE Predictions -----------------------------------------------------------
-target = 'LATITUDE'
-
-# Set the target variables to target
-y_train, y_test, y_test2, y_train_final = set_y(target)
-
-df_pred = lat_long_reg(target=target, tag=tag, 
-             # Lack of improvement in this pair stops model training
-             model_stop_pair=(X_test2, y_test2),
-             random_search=random_search, num_rounds=num_rounds,
-             n_jobs=n_jobs, 
-             xgb_verbose=xgb_verbose, df_pred=df_pred,
-             save_model=save_model)
-
-
-# %% LONGITUDE Predictions -----------------------------------------------------------
-target = 'LONGITUDE'
-
-# Set the target variables to target
-y_train, y_test, y_test2, y_train_final = set_y(target)
-
-df_pred = lat_long_reg(target=target, tag=tag, 
-             # Lack of improvement in this pair stops model training
-             model_stop_pair=(X_test2, y_test2),
-             random_search=random_search, num_rounds=num_rounds,
-             n_jobs=n_jobs, 
-             xgb_verbose=xgb_verbose, df_pred=df_pred,
-             save_model=save_model)
-
-# Export all predictions to csv
-df_pred.to_csv('predictions/mvp_autotune_' + tag + '.csv', index=False)
-
-
-
-
-
 # %% Visualize errors ---------------------------------------------------------
 
-#error_both = errorLon + errorLat
-#
-## Tough test set
-#y_test2_long = test_val['LONGITUDE']
-#y_test2_lat = test_val['LATITUDE']
-#
-## Full test set
-#y_test_long = test['LONGITUDE']
-#y_test_lat = test['LATITUDE']
-#
-#def find_error(X_test, y_test, xgb_model):
-#    dtest = xgb.DMatrix(X_test)
-#    pred = xgb_model.predict(dtest)
-#    error = pred - y_test
-#    return(error)
-#
-## Error on tough test set only
-#error_lat2 = find_error(X_test2, y_test2_lat, bst)
-#error_lon2 = find_error(X_test2, y_test2_lat, bst_lon)
-#
-#error_lat = find_error(X_test, y_test_lat, bst)
-#error_lon = find_error(X_test, y_test_long, bst_lon)
-#
-#
-## Error on full test set
-#error = error_lon
-#y_plot = y_test_lat
-#x_plot = y_test_long
-#
-## Error on tough test set
-#error = error_lat2
-#y_plot = y_test2_lat
-#x_plot = y_test2_long
-#
-## Ensure that zero is always the same color, gray
-#zero = abs(0 - min(error) / (max(error) - min(error)))
-#
-#colorscale = [[0, 'rgba(5,113,176, 1)'], 
-#               [zero, 'rgba(211, 211, 211, 1)' ],
-#               [1, 'rgba(202,0,32, 1)']]
-#
-#trace = go.Scatter3d(
-#        x=x_plot,
-#        y=y_plot,
-#        z=error,
-#        mode='markers',
-#        marker = dict(
-#                size = 4,
-#                color=error,
-#                colorscale=colorscale
-#        )
-#)
-#
-#plot([trace])
+# Tough test set
+y_test2_long = test_val['LONGITUDE']
+y_test2_lat = test_val['LATITUDE']
+
+# Full test set
+y_test_long = test['LONGITUDE']
+y_test_lat = test['LATITUDE']
+
+def find_error(X_test, y_test, xgb_model):
+    dtest = xgb.DMatrix(X_test)
+    pred = xgb_model.predict(dtest)
+    error = pred - y_test
+    return(error)
+
+# Error on tough test set only
+error_lat2 = find_error(X_test2, y_test2_lat, bst)
+error_lon2 = find_error(X_test2, y_test2_lat, bst_lon)
+
+error_lat = find_error(X_test, y_test_lat, bst)
+error_lon = find_error(X_test, y_test_long, bst_lon)
 
 
+# Error on full test set
+error = error_lon
+y_plot = y_test_lat
+x_plot = y_test_long
 
-# %% BACKBURNER
-# Plot learning curve ------------------------------------------------------
+# Error on tough test set
+error = error_lat2
+y_plot = y_test2_lat
+x_plot = y_test2_long
 
-## This part not functional yet.
-#result_rscv_best = rscv_best_result
-#result_final = final_result
-#
-#result_final.values()
-#
-#
-#
-#def gen_traces(name, result_dict):
-#    
-#    all_traces = list()
-#    
-#    for validation in result_dict.keys():
-#        
-#        trace = go.Scatter(
-#                name = name + '_' + validation,
-#                y = result_dict[validation]['mae'])
-#        all_traces.append(trace)
-#    return(all_traces)
-#
-#        
-#
-#traces1 = gen_traces('rscv', result_rscv_best)
-#traces2 = gen_traces('final', result_final)
-#
-#traces1.append(traces2.items())
-#
-#layout = go.Layout(
-#        yaxis=dict(range=[0,20]))
-#
-#fig = go.Figure(data=traces1, layout=layout)
-#plot(fig)
-#
-#
-#
-#results = result_final        
-#
-#trace1 = go.Scatter(
-#        name = 'Train',
-#        y = results['validation_0']['mae'])
-#
-#all_traces.append(trace1)
-#
-#type(trace1)
-#
-#data = list()
-#data.append(trace1)
-#
-#
-#trace2 = go.Scatter(
-#        name = 'Test',
-#        y = results['validation_1']['mae'])
-#
-#data = [trace1, trace2]
-#
-#layout = go.Layout(
-#        yaxis=dict(range=[0,20]))
-#
-#fig = go.Figure(data=data, layout=layout)
-#plot(fig)
+# Ensure that zero is always the same color, gray
+zero = abs(0 - min(error) / (max(error) - min(error)))
+
+colorscale = [[0, 'rgba(5,113,176, 1)'], 
+               [zero, 'rgba(211, 211, 211, 1)' ],
+               [1, 'rgba(202,0,32, 1)']]
+
+trace = go.Scatter3d(
+        x=x_plot,
+        y=y_plot,
+        z=error,
+        mode='markers',
+        marker = dict(
+                size = 4,
+                color=error,
+                colorscale=colorscale
+        )
+)
+
+plot([trace])
