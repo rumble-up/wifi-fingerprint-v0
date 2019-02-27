@@ -2,3 +2,5 @@
 temp-plot.html
 .DS_Store
 .Rproj.user
+r/.RData
+r/.Rhistory
