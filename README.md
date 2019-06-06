@@ -27,18 +27,16 @@ The point of this project was to accurately locate a person despite the messines
 ## Dataset challenges
 The Training dataset and the Validation dataset were recorded with two different methods. 
 
-__Training - users stand in specific locations__ 
+__Training - users stand in specific locations__ <br>
 933 unique and specific locations were marked on the floor within the 3 buildings and volunteers were asked to stand on these locations and use an app installed on their phone to record WAP signal strength.
 
-__Validation - users stand in random locations throughout buildings__
+__Validation - users stand in random locations throughout buildings__ <br>
 Data was recorded 4 months after the Training dataset. Volunteers chose their own location, then used a different app to record the WAP signals. The app guessed their location, then the users corrected the app if the guess was incorrect.
 
-__Testing - unknown collection method__
-A final dataset was collected to use in the ____ competition in [year]. [number] of international teams competed to locate positions using WAP signals with the lowest margin of error
+__Testing - unknown collection method__ <br>
+A final dataset was collected to use in the 2015 EvAAL-ETRI Competition. International teams had 6 weeks to develop models and then competed to locate positions using WAP signals with the lowest margin of error.  They were provided a test set of new WAP signals, but the target variables, the building, floor, latitude, and longitude were hidden from them. 
 
-## WAP Data Challenges
-* It appears some of the WAPs moved their physical location in the 4 months between the Training and Validation stages, which drastically changes the signal received.
-* [num] WAPs disappeared and [num] appeared
+
 
 
 
